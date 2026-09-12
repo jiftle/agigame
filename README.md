@@ -106,7 +106,7 @@ roms/  saves/        ROM 与存档（gitignore）
 
 ```bash
 make console-install     # 安装控制台前端依赖
-make console-dev         # 启动控制台（后端 :8000 / 前端 :8001），默认 admin/123456
+make dev-console         # 仅启动控制台（后端 :8000 / 前端 :8001），默认 admin/123456
 ```
 
 控制台 ROM 目录由 `console/backend/manifest/config/config.yaml` 的 `emulator.romDir` 配置（默认 `../../roms`）。
@@ -114,10 +114,11 @@ make console-dev         # 启动控制台（后端 :8000 / 前端 :8001），�
 ## 一键命令
 
 ```bash
+make dev     # 一键调试启动：Web 模拟器(:8080) + 控制台(:8000/:8001)
 make build   # 构建 Web 服务 + 控制台后端
 make test    # 引擎与服务测试
 make check   # gofmt 校验 + vet + test + 控制台构建
-make web-dev # 启动 Web 模拟器（:8080）
+make dev-web # 仅启动 Web 模拟器（:8080）
 ```
 
 ## 设计要点
