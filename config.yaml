@@ -8,10 +8,11 @@ emulator:
   save_path: ./saves/
   cgb: false
 agent:
-  mode: hybrid           # rules | llm | hybrid | manual
+  mode: hybrid              # rules | llm | hybrid | manual
   llm_interval_ms: 500
-  model: gpt-4o-mini
-  api_key_env: OPENAI_API_KEY
+  safety_net_frames: 120    # 停止前进 N 帧后强制救援（0=默认120）
+  model: gpt-4o-mini        # 预留：P3 接真实 LLM 时使用
+  api_key_env: OPENAI_API_KEY # 预留：真实 LLM 的 API 密钥环境变量名
   rules_first: true
 game: sml                # 游戏插件 id（P2 起生效）
 webui: ./webui

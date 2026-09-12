@@ -49,11 +49,12 @@ type Gameboy struct {
 	paused atomic.Bool
 
 	// Callbacks and input provider injected by the host application.
-	frameCallback FrameCallback
-	stateCallback StateCallback
-	inputProvider InputProvider
-	frameCount    atomic.Uint64
-	stateInterval uint64
+	frameCallback   FrameCallback
+	stateCallback   StateCallback
+	inputProvider   InputProvider
+	preFrameCallback func()
+	frameCount      atomic.Uint64
+	stateInterval   uint64
 
 	resetRequested atomic.Bool
 
@@ -157,6 +158,13 @@ func (gb *Gameboy) SetStateCallback(cb StateCallback, stateInterval uint64) {
 	}
 }
 
+// SetPreFrameCallback registers a callback invoked once per emulated frame,
+// immediately before the frame is advanced, on the emulator goroutine. It is
+// the synchronous hook for the agent's per-frame decision layer.
+func (gb *Gameboy) SetPreFrameCallback(cb func()) {
+	gb.preFrameCallback = cb
+}
+
 // SetInputProvider registers the input source read once per emulated frame.
 func (gb *Gameboy) SetInputProvider(provider InputProvider) {
 	gb.inputProvider = provider
@@ -184,6 +192,9 @@ func (gb *Gameboy) Run(ctx context.Context) {
 func (gb *Gameboy) Step() uint64 {
 	if gb.resetRequested.Swap(false) {
 		_ = gb.Reset()
+	}
+	if gb.preFrameCallback != nil {
+		gb.preFrameCallback()
 	}
 	if gb.inputProvider != nil {
 		gb.ProcessInput(gb.inputProvider.ReadButtons())

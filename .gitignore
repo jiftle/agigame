@@ -1,5 +1,7 @@
-# 运行时产物
+# 运行时产物（根目录编译出的二进制，具体为 go build ./cmd/server 的输出）
 /server
+!/server/
+
 saves/*
 !saves/.gitkeep
 *.sav

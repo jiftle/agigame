@@ -29,7 +29,12 @@
         <h2>控制</h2>
         <div class="row">
           <button id="btnAuto" class="primary">Auto</button>
-          <button id="btnMode" disabled title="P2 起生效">规则/LLM</button>
+          <select id="selMode" title="Agent 决策层">
+            <option value="rules">规则</option>
+            <option value="hybrid">混合</option>
+            <option value="llm">LLM</option>
+            <option value="manual">手动</option>
+          </select>
         </div>
         <div class="row">
           <button id="btnReset">Reset</button>
@@ -40,6 +45,21 @@
           ↑↓←→ 方向键 &nbsp;·&nbsp; Z = A &nbsp;·&nbsp; X = B<br />
           Enter = Start &nbsp;·&nbsp; Backspace = Select
         </p>
+      </section>
+
+      <section class="panel">
+        <h2>Agent</h2>
+        <table id="agentTable">
+          <tr><td>模式</td><td id="aMode">-</td></tr>
+          <tr><td>进度(camera)</td><td id="aProgress">-</td></tr>
+          <tr><td>生命</td><td id="aLives">-</td></tr>
+          <tr><td>金币</td><td id="aCoins">-</td></tr>
+          <tr><td>状态</td><td id="aState">-</td></tr>
+          <tr><td>敌人距离</td><td id="aEnemy">-</td></tr>
+          <tr><td>死亡</td><td id="aDeaths">-</td></tr>
+          <tr><td>奖励累计</td><td id="aReward">-</td></tr>
+          <tr><td>LLM 决策</td><td id="aDecision">-</td></tr>
+        </table>
       </section>
 
       <section class="panel">

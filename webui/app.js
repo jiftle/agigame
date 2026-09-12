@@ -11,6 +11,7 @@ const el = {
   overlayMsg: document.getElementById("overlayMsg"),
   log: document.getElementById("log"),
   btnAuto: document.getElementById("btnAuto"),
+  selMode: document.getElementById("selMode"),
   btnReset: document.getElementById("btnReset"),
   btnPause: document.getElementById("btnPause"),
   sFrame: document.getElementById("sFrame"),
@@ -23,6 +24,15 @@ const el = {
   sLY: document.getElementById("sLY"),
   sLCDC: document.getElementById("sLCDC"),
   sIFIE: document.getElementById("sIFIE"),
+  aMode: document.getElementById("aMode"),
+  aProgress: document.getElementById("aProgress"),
+  aLives: document.getElementById("aLives"),
+  aCoins: document.getElementById("aCoins"),
+  aState: document.getElementById("aState"),
+  aEnemy: document.getElementById("aEnemy"),
+  aDeaths: document.getElementById("aDeaths"),
+  aReward: document.getElementById("aReward"),
+  aDecision: document.getElementById("aDecision"),
 };
 
 const KEYMAP = {
@@ -85,6 +95,7 @@ function connect() {
         break;
       case "state":
         updateState(msg.state);
+        updateAgent(msg.agent || null);
         break;
       case "log":
         log(msg.level || "info", msg.msg || "");
@@ -142,6 +153,33 @@ function updateState(s) {
 function hex4(v) { return "0x" + (v >>> 0).toString(16).toUpperCase().padStart(4, "0"); }
 function hex2(v) { return "0x" + (v & 0xff).toString(16).toUpperCase().padStart(2, "0"); }
 function bits(v) { return (v & 0xff).toString(2).padStart(8, "0"); }
+
+function updateAgent(a) {
+  const show = a ? "on" : "off";
+  document.body.classList.remove("agent-off", "agent-on");
+  document.body.classList.add("agent-" + show);
+  if (!a) {
+    el.aMode.textContent = "手动";
+    el.aProgress.textContent = el.aLives.textContent = el.aCoins.textContent =
+      el.aState.textContent = el.aEnemy.textContent = el.aDeaths.textContent =
+      el.aReward.textContent = el.aDecision.textContent = "-";
+    return;
+  }
+  el.aMode.textContent = a.mode || "-";
+  el.aProgress.textContent = "camera=" + (a.progress !== undefined ? a.progress : "-") +
+    " / max=" + (a.maxProgress !== undefined ? a.maxProgress : "-");
+  el.aLives.textContent = a.lives;
+  el.aCoins.textContent = a.coins;
+  el.aState.textContent = (a.state || "-") + (a.hard ? " · hard" : "") + (a.demo ? " · demo" : "");
+  if (a.enemyDX !== undefined && a.enemyDX !== null) {
+    el.aEnemy.textContent = "dx=" + a.enemyDX;
+  } else {
+    el.aEnemy.textContent = "无";
+  }
+  el.aDeaths.textContent = a.deaths !== undefined ? a.deaths : "-";
+  el.aReward.textContent = a.rewardTotal !== undefined ? a.rewardTotal.toFixed(1) : "-";
+  el.aDecision.textContent = a.decisionRationale || "-";
+}
 
 function log(level, text) {
   const div = document.createElement("div");
@@ -208,9 +246,10 @@ el.btnAuto.addEventListener("click", () => {
   el.btnAuto.textContent = manual ? "Auto" : "Manual";
   el.btnAuto.classList.toggle("primary", !manual);
   if (!manual) {
+    const mode = el.selMode.value;
     held.forEach(release);
-    send({ type: "config", auto: true, agent: "rules" });
-    log("info", "已切换 Auto（规则 Agent，P2 实现）");
+    send({ type: "config", auto: true, agent: mode });
+    log("info", `已切换 Auto（Agent 模式: ${mode}）`);
   } else {
     send({ type: "config", auto: false, agent: "manual" });
     log("info", "已切换 Manual，键盘接管");
