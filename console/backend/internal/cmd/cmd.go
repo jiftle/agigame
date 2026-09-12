@@ -9,6 +9,7 @@ import (
 
 	"agigame/console/backend/internal/boot"
 	"agigame/console/backend/internal/controller/auth"
+	"agigame/console/backend/internal/controller/emu"
 	"agigame/console/backend/internal/controller/system"
 	_ "agigame/console/backend/internal/logic"
 	"agigame/console/backend/internal/middleware"
@@ -18,7 +19,7 @@ import (
 var Main = gcmd.Command{
 	Name:  "main",
 	Usage: "main",
-	Brief: "AdminBase 管理基座后端服务",
+	Brief: "GoBoy 控制台后端服务",
 	Func: func(ctx context.Context, parser *gcmd.Parser) (err error) {
 		if err = boot.InitDatabase(ctx); err != nil {
 			return err
@@ -42,9 +43,18 @@ var Main = gcmd.Command{
 					system.NewDict(),
 					system.NewConfig(),
 					system.NewLog(),
+					emu.NewSession(),
 				)
 			})
 		})
+
+		// 模拟器实时流（WebSocket）：独立分组，仅挂 Auth，
+		// 避开统一响应 Response 中间件对连接升级的干扰。
+		s.Group("/ws", func(ws *ghttp.RouterGroup) {
+			ws.Middleware(ghttp.MiddlewareCORS, middleware.Auth)
+			ws.Bind(emu.NewStream())
+		})
+
 		s.Run()
 		return nil
 	},

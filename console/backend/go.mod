@@ -3,11 +3,16 @@ module agigame/console/backend
 go 1.26.3
 
 require (
+	agigame v0.0.0
 	github.com/gogf/gf/contrib/drivers/sqlite/v2 v2.10.3
 	github.com/gogf/gf/v2 v2.10.3
 	github.com/golang-jwt/jwt/v5 v5.3.1
+	github.com/gorilla/websocket v1.5.3
 	golang.org/x/crypto v0.57.0
 )
+
+// 引擎源码在同一仓库的 emulator/ 下，本地开发直接 replace。
+replace agigame => ../..
 
 require (
 	github.com/BurntSushi/toml v1.5.0 // indirect
@@ -20,7 +25,6 @@ require (
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/grokify/html-strip-tags-go v0.1.0 // indirect
 	github.com/magiconair/properties v1.8.10 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect

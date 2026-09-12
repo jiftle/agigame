@@ -37,3 +37,10 @@ jwt:
 system:
   defaultPassword: "123456" # 重置密码默认值
   superAdminId: 1           # 超级管理员用户ID
+
+# 模拟器配置（引擎来自 agigame/emulator/engine）
+emulator:
+  romDir: "../../roms"              # ROM 目录（相对 backend 工作目录）
+  defaultRom: "super-mario-land.gb" # 未显式指定时使用的 ROM
+  palette: "greyscale"              # greyscale | original | bgb
+  frameSkip: 4                      # 每 N 帧推一帧到前端

@@ -6,6 +6,7 @@ import (
 	_ "agigame/console/backend/internal/logic/config"
 	_ "agigame/console/backend/internal/logic/dept"
 	_ "agigame/console/backend/internal/logic/dict"
+	_ "agigame/console/backend/internal/logic/emu"
 	_ "agigame/console/backend/internal/logic/log"
 	_ "agigame/console/backend/internal/logic/menu"
 	_ "agigame/console/backend/internal/logic/role"
