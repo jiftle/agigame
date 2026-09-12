@@ -33,6 +33,7 @@ AdminBase：GoFrame v2 后端 + Vite/React 前端的后台管理基座，前后�
 - 提示/弹框用 `@/utils/antdApp` 的 `message`/`modal`（由 `AntdAppBridge` 绑定 antd `App` 上下文）；不要用 antd 静态 `message`/`Modal.confirm`，否则暗色主题下样式错乱。
 - 主题相关颜色用 antd `theme.useToken()` 取，别写死 `rgba(0,0,0,...)`（暗色下不可读）。
 - 端口/代理看 `vite.config.ts` 与 `.env.development`：`VITE_API_BASE`、`VITE_PORT`（默认 8001）、`VITE_PROXY_TARGET`。
+- 会话实时流（二进制帧，流量大）在 dev 直连后端：`VITE_WS_TARGET=http://127.0.0.1:8000`，不经 Vite 代理；未设置时回退同源 `/ws`（生产由后端同源托管，无代理）。
 
 ## 数据库与代码生成
 

@@ -47,6 +47,19 @@ function parseBinaryFrame(buf: ArrayBuffer): FrameData | null {
   return { rgba: new Uint8ClampedArray(buf, 16, width * height * 4), width, height };
 }
 
+/** 会话 WS 地址：优先直连 VITE_WS_TARGET（dev 绕过 Vite 代理），否则同源。 */
+function buildStreamURL(sessionId: string): string {
+  const path = `/ws/emu/${sessionId}/stream?token=${encodeURIComponent(getToken())}`;
+  const target = import.meta.env.VITE_WS_TARGET as string | undefined;
+  if (target) {
+    const u = new URL(target, window.location.href);
+    const proto = u.protocol === 'https:' ? 'wss' : 'ws';
+    return `${proto}://${u.host}${path}`;
+  }
+  const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  return `${proto}://${window.location.host}${path}`;
+}
+
 /** 建立会话 WebSocket：接收 frame/state/log/audio，下发 keys/control/config。 */
 export function useEmulatorSocket(
   sessionId: string | undefined,
@@ -65,10 +78,7 @@ export function useEmulatorSocket(
 
   useEffect(() => {
     if (!sessionId) return;
-    const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const token = getToken();
-    const url = `${proto}://${window.location.host}/ws/emu/${sessionId}/stream?token=${encodeURIComponent(token)}`;
-    const ws = new WebSocket(url);
+    const ws = new WebSocket(buildStreamURL(sessionId));
     ws.binaryType = 'arraybuffer';
     wsRef.current = ws;
 
