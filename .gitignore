@@ -1,6 +1,5 @@
-# 运行时产物（根目录编译出的二进制，具体为 go build ./cmd/server 的输出）
-/server
-!/server/
+# 编译产物（go build -o server ./cmd/server 因同名目录会落到 server/server）
+server/server
 
 saves/*
 !saves/.gitkeep
