@@ -36,7 +36,10 @@ export const menuConfig: MenuItemConfig[] = [
     path: '/emulator',
     name: '模拟器',
     icon: <VideoCameraOutlined />,
-    children: [{ path: '/emulator/sessions', name: '会话管理', access: 'emu:session:list' }],
+    children: [
+      { path: '/emulator/games', name: '游戏', access: 'emu:session:list' },
+      { path: '/emulator/sessions', name: '会话管理', access: 'emu:session:list' },
+    ],
   },
   { path: '/system', name: '系统管理', icon: <SettingOutlined />, children: systemMenu },
   ...(import.meta.env.DEV
