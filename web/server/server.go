@@ -74,8 +74,18 @@ func (s *Server) Session() *engine.Session { return s.session }
 func (s *Server) Start(ctx context.Context) error {
 	s.session.SetFrameCallback(s.onFrame)
 	s.session.SetStateCallback(s.onState)
+	s.session.SetAudioCallback(s.onAudio)
 	s.logf("info", "loaded cart: %q", s.session.CartName())
 	return s.session.Start(ctx)
+}
+
+// onAudio runs on the session goroutine and broadcasts a PCM chunk.
+func (s *Server) onAudio(a engine.Audio) {
+	s.hub.BroadcastJSON(AudioMsg{
+		Type: "audio",
+		PCM:  base64.StdEncoding.EncodeToString(a.PCM),
+		Rate: a.SampleRate,
+	})
 }
 
 // onFrame runs on the session encoder goroutine and broadcasts each frame.

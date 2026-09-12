@@ -193,6 +193,7 @@ func (m *sEmu) Start(ctx context.Context, in *model.EmuStartInput) (*model.EmuSe
 	sess.engine = eng
 	eng.SetFrameCallback(sess.onFrame)
 	eng.SetStateCallback(sess.onState)
+	eng.SetAudioCallback(sess.onAudio)
 
 	runCtx, cancel := context.WithCancel(context.Background())
 	sess.cancel = cancel
@@ -340,6 +341,18 @@ func (s *session) onState(u engine.StateUpdate) {
 		return
 	}
 	s.broadcastJSON(stateMsg{Type: "state", State: u.State, Agent: u.Agent})
+}
+
+// onAudio 把 PCM 块广播给订阅者。
+func (s *session) onAudio(a engine.Audio) {
+	if !s.hasSubs() {
+		return
+	}
+	s.broadcastJSON(audioMsg{
+		Type: "audio",
+		PCM:  base64.StdEncoding.EncodeToString(a.PCM),
+		Rate: a.SampleRate,
+	})
 }
 
 func (s *session) logf(level, format string, args ...any) {

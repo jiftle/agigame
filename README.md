@@ -70,6 +70,7 @@ Server → Client：
 ```json
 {"type":"hello","cart":"SUPER MARIO LAND","fps":60,"game":"sml"}
 {"type":"frame","img":"<base64 PNG>","tick":123}
+{"type":"audio","pcm":"<base64 s16le>","rate":32768}
 {"type":"state","state":{...},"agent":{"mode":"hybrid","camera":12,"lives":3,...}} // auto 时附带 game 字段
 {"type":"log","level":"info","msg":"..."}
 ```
@@ -121,6 +122,12 @@ make dev-console         # 仅启动控制台（后端 :8000 / 前端 :8001）�
 - 首期范围为「能玩」（画面/输入/控制台/WS）；**Agent（规则/LLM）暂只支持 GB**，GBA 会话忽略 auto/mode。
 
 > 注：guac 会引入 ebiten 等依赖（已在根 module）。GBA 及其 ROM 仅支持自有合法 dump。
+
+## 声音
+
+- **GBA：已支持**。后端从 guac 的 APU 捕获立体声 s16le PCM（32768Hz），随 WS 以 `audio` 消息推送，浏览器用 Web Audio API 排队播放；控制台会话详情与 WebUI 均有「声音」开关。
+- **GB：暂无声**。`emulator/core/apu` 是无头实现（不合成音频），后续可移植原 GoBoy APU 合成并复用同一音频通道。
+- 浏览器自动播放策略要求先有一次用户交互（点击/按键）后才会出声。
 
 ## 一键命令
 

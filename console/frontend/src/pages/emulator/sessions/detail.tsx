@@ -1,9 +1,10 @@
 import { PageContainer } from '@ant-design/pro-components';
 import { Badge, Button, Card, Descriptions, Select, Space, Switch, Tag, Typography } from 'antd';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { message } from '@/utils/antdApp';
+import { PcmPlayer } from '@/utils/pcmAudio';
 
 import { useEmulatorSocket } from '@/hooks/useEmulatorSocket';
 import { getSession, stopSession, type EmuSessionInfo } from '@/services/emulator';
@@ -38,6 +39,8 @@ export default function EmulatorSessionDetailPage() {
   const [mode, setMode] = useState('rules');
   const [palette, setPalette] = useState('greyscale');
   const [paused, setPaused] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const player = useMemo(() => new PcmPlayer(), []);
 
   autoRef.current = auto;
 
@@ -54,7 +57,7 @@ export default function EmulatorSessionDetailPage() {
     img.src = dataUrl;
   };
 
-  const socket = useEmulatorSocket(id, drawFrame);
+  const socket = useEmulatorSocket(id, drawFrame, (pcm, rate) => player.playPcm(pcm, rate));
 
   useEffect(() => {
     if (!id) return;
@@ -180,6 +183,17 @@ export default function EmulatorSessionDetailPage() {
                     { label: '经典绿', value: 'original' },
                     { label: 'BGB 绿', value: 'bgb' },
                   ]}
+                />
+              </Space>
+              <Space>
+                <span>声音</span>
+                <Switch
+                  checked={!muted}
+                  onChange={(v) => {
+                    setMuted(!v);
+                    player.muted = !v;
+                    player.resume();
+                  }}
                 />
               </Space>
               <Space>

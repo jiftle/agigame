@@ -36,6 +36,13 @@ type LogMsg struct {
 	Msg   string `json:"msg"`
 }
 
+// AudioMsg carries a chunk of stereo s16le PCM as base64.
+type AudioMsg struct {
+	Type string `json:"type"`
+	PCM  string `json:"pcm"`
+	Rate int    `json:"rate"`
+}
+
 // HelloMsg is the first message sent after a client connects.
 type HelloMsg struct {
 	Type    string `json:"type"`

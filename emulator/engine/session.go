@@ -41,6 +41,7 @@ type Session struct {
 	mu      sync.RWMutex
 	onFrame func(Frame)
 	onState func(StateUpdate)
+	onAudio func(Audio)
 }
 
 // New builds a Session and loads the configured ROM. It does not start
@@ -119,6 +120,24 @@ func (s *Session) SetStateCallback(cb func(StateUpdate)) {
 	s.mu.Unlock()
 }
 
+// SetAudioCallback registers the callback invoked with each PCM chunk on the
+// emulator goroutine. It must not block; hosts should copy or enqueue quickly.
+func (s *Session) SetAudioCallback(cb func(Audio)) {
+	s.mu.Lock()
+	s.onAudio = cb
+	s.mu.Unlock()
+}
+
+// emitAudio forwards a PCM chunk to the audio callback (if any).
+func (s *Session) emitAudio(a Audio) {
+	s.mu.RLock()
+	cb := s.onAudio
+	s.mu.RUnlock()
+	if cb != nil {
+		cb(a)
+	}
+}
+
 // Start wires the emulator callbacks and runs the emulation loop until ctx is
 // cancelled. It blocks; hosts normally call it from a goroutine.
 func (s *Session) Start(ctx context.Context) error {
@@ -161,6 +180,12 @@ func (s *Session) startGBA(ctx context.Context) error {
 			}
 			s.gba.Step()
 			tick := s.gba.FrameCount()
+
+			// Always drain PCM to release the APU ring's backpressure.
+			if pcm := s.gba.DrainPCM(); len(pcm) > 0 {
+				s.emitAudio(Audio{PCM: pcm, SampleRate: s.gba.SampleRate()})
+			}
+
 			if tick%s.frameSkip == 0 {
 				if png := encodeRGBA(s.gba.Pixels(), gba.Width, gba.Height); png != nil {
 					s.mu.RLock()

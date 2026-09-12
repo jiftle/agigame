@@ -14,6 +14,7 @@ const el = {
   selMode: document.getElementById("selMode"),
   btnReset: document.getElementById("btnReset"),
   btnPause: document.getElementById("btnPause"),
+  btnMute: document.getElementById("btnMute"),
   selPalette: document.getElementById("selPalette"),
   sFrame: document.getElementById("sFrame"),
   sPC: document.getElementById("sPC"),
@@ -98,6 +99,9 @@ function connect() {
         break;
       case "frame":
         drawFrame(msg.img, msg.tick);
+        break;
+      case "audio":
+        playPcm(msg.pcm, msg.rate);
         break;
       case "state":
         updateState(msg.state);
@@ -205,6 +209,54 @@ function log(level, text) {
   el.log.scrollTop = el.log.scrollHeight;
 }
 
+// --- Audio -------------------------------------------------------------------
+
+let audioCtx = null;
+let audioNextTime = 0;
+let muted = false;
+
+function ensureAudio() {
+  if (!audioCtx) {
+    const Ctor = window.AudioContext || window.webkitAudioContext;
+    if (!Ctor) return null;
+    audioCtx = new Ctor();
+  }
+  if (audioCtx.state === "suspended") audioCtx.resume();
+  return audioCtx;
+}
+
+function base64ToBytes(b64) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function playPcm(b64, rate) {
+  if (muted || !b64) return;
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  const bytes = base64ToBytes(b64);
+  const samples = bytes.length >> 1;
+  const frames = samples >> 1;
+  if (frames <= 0) return;
+  const i16 = new Int16Array(bytes.buffer, bytes.byteOffset, samples);
+  const buf = ctx.createBuffer(2, frames, rate || 32768);
+  const l = buf.getChannelData(0);
+  const r = buf.getChannelData(1);
+  for (let i = 0; i < frames; i++) {
+    l[i] = i16[2 * i] / 32768;
+    r[i] = i16[2 * i + 1] / 32768;
+  }
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.connect(ctx.destination);
+  const now = ctx.currentTime;
+  if (audioNextTime < now + 0.02) audioNextTime = now + 0.08;
+  src.start(audioNextTime);
+  audioNextTime += buf.duration;
+}
+
 // --- Input -------------------------------------------------------------------
 
 function buttonName(key) {
@@ -254,6 +306,13 @@ el.btnPause.addEventListener("click", () => {
   const action = paused ? "resume" : "pause";
   send({ type: "control", action });
   log("info", paused ? "继续" : "暂停");
+});
+
+el.btnMute.addEventListener("click", () => {
+  muted = !muted;
+  el.btnMute.textContent = muted ? "Unmute" : "Mute";
+  el.btnMute.classList.toggle("primary", muted);
+  ensureAudio();
 });
 
 el.btnAuto.addEventListener("click", () => {

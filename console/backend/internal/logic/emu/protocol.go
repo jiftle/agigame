@@ -27,3 +27,10 @@ type logMsg struct {
 	Level string `json:"level"`
 	Msg   string `json:"msg"`
 }
+
+// audioMsg 携带一段立体声 s16le PCM（base64）。
+type audioMsg struct {
+	Type string `json:"type"`
+	PCM  string `json:"pcm"`
+	Rate int    `json:"rate"`
+}

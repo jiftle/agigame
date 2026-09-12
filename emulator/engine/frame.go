@@ -14,6 +14,12 @@ type Frame struct {
 	Tick uint64
 }
 
+// Audio is a chunk of stereo s16le PCM produced by a console's APU.
+type Audio struct {
+	PCM        []byte
+	SampleRate int
+}
+
 // StateUpdate is a periodic emulator state snapshot plus the agent summary
 // (non-nil whenever auto mode is on).
 type StateUpdate struct {

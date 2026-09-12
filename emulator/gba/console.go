@@ -9,9 +9,11 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	guacconfig "github.com/aabalke/guac/config"
 	guacgba "github.com/aabalke/guac/emu/gba"
+	"github.com/aabalke/guac/utils"
 	"github.com/hajimehoshi/ebiten/v2"
 
 	"agigame/emulator/core/gb"
@@ -23,6 +25,11 @@ const (
 	Height = 160
 	// FPS is the GBA refresh rate.
 	FPS = 59.727500569606
+	// SampleRate is the PCM sample rate we capture from the GBA APU (stereo s16le).
+	SampleRate = 32768
+	// audioBufferDur is the GBA APU ring buffer size; it also provides
+	// backpressure that keeps emulation synced to audio consumption.
+	audioBufferDur = 40 * time.Millisecond
 )
 
 var initOnce sync.Once
@@ -77,15 +84,25 @@ func keyFor(b gb.Button) (ebiten.Key, bool) {
 	}
 }
 
+// configureAudio wires guac's APU to an in-memory stream (no audio device) and
+// schedules the sample/frame-sequencer events so SoundClock produces PCM.
+func configureAudio(g *guacgba.GBA) {
+	g.Apu.Stream = utils.NewStream(audioBufferDur, SampleRate)
+	g.CyclesPerSndGen = int64(guacgba.CPU_SPEED / SampleRate)
+	g.Scheduler.Schedule(guacgba.EVENT_SND_FRAME_SEQ, 1, 0, g.ClockFrameSequencerEvent, nil)
+	g.Scheduler.Schedule(guacgba.EVENT_SND_SAMPLE_GEN, 1, 0, g.AudioSampleEvent, nil)
+}
+
 // Console is a running GBA core.
 type Console struct {
-	mu      sync.Mutex
-	g       *guacgba.GBA
-	romPath string
-	title   string
-	held    map[gb.Button]bool
-	frames  uint64
-	paused  bool
+	mu       sync.Mutex
+	g        *guacgba.GBA
+	romPath  string
+	title    string
+	held     map[gb.Button]bool
+	frames   uint64
+	audioAcc int64
+	paused   bool
 }
 
 // New loads a GBA ROM and boots the core. It returns an error (instead of
@@ -101,6 +118,7 @@ func New(romPath string) (c *Console, err error) {
 		}
 	}()
 	g := guacgba.NewGBA(nil, romPath, true)
+	configureAudio(g)
 	return &Console{
 		g:       g,
 		romPath: romPath,
@@ -133,6 +151,33 @@ func (c *Console) Step() {
 // Pixels returns the current framebuffer as RGBA bytes (Width*Height*4).
 func (c *Console) Pixels() []byte { return c.g.Pixels }
 
+// SampleRate returns the PCM sample rate of DrainPCM's output.
+func (c *Console) SampleRate() int { return SampleRate }
+
+// DrainPCM returns the stereo s16le PCM produced during the most recent Step.
+// It must be called once per Step: the underlying ring has backpressure, so
+// skipping it would eventually stall the emulator.
+func (c *Console) DrainPCM() []byte {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.g == nil || c.g.Apu == nil || c.g.Apu.Stream == nil {
+		return nil
+	}
+	cyclesPerSample := c.g.CyclesPerSndGen
+	if cyclesPerSample <= 0 {
+		return nil
+	}
+	c.audioAcc += int64(guacgba.CYCLES_FRAME)
+	frames := c.audioAcc / cyclesPerSample
+	c.audioAcc -= frames * cyclesPerSample
+	if frames <= 0 {
+		return nil
+	}
+	buf := make([]byte, frames*4) // stereo s16
+	_, _ = c.g.Apu.Stream.Read(buf)
+	return buf
+}
+
 // SetButton sets a button's held state.
 func (c *Console) SetButton(b gb.Button, down bool) {
 	c.mu.Lock()
@@ -155,8 +200,10 @@ func (c *Console) Reset() {
 	if err != nil {
 		return
 	}
+	configureAudio(g)
 	c.g = g
 	c.frames = 0
+	c.audioAcc = 0
 }
 
 // SetPaused pauses or resumes stepping.

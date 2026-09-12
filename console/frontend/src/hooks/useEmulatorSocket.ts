@@ -20,15 +20,19 @@ export interface EmuSocketHandle {
 }
 
 type FrameSink = (dataUrl: string) => void;
+type AudioSink = (pcmBase64: string, rate: number) => void;
 
-/** 建立会话 WebSocket：接收 frame/state/log，下发 keys/control/config。 */
+/** 建立会话 WebSocket：接收 frame/state/log/audio，下发 keys/control/config。 */
 export function useEmulatorSocket(
   sessionId: string | undefined,
   onFrame: FrameSink,
+  onAudio?: AudioSink,
 ): EmuSocketHandle {
   const wsRef = useRef<WebSocket | null>(null);
   const onFrameRef = useRef<FrameSink>(onFrame);
   onFrameRef.current = onFrame;
+  const onAudioRef = useRef<AudioSink | undefined>(onAudio);
+  onAudioRef.current = onAudio;
 
   const [connected, setConnected] = useState(false);
   const [agent, setAgent] = useState<Record<string, unknown> | null>(null);
@@ -60,6 +64,12 @@ export function useEmulatorSocket(
           break;
         case 'state':
           setAgent((msg.agent as Record<string, unknown>) || null);
+          break;
+        case 'audio':
+          onAudioRef.current?.(
+            String(msg.pcm || ''),
+            typeof msg.rate === 'number' ? msg.rate : 32768,
+          );
           break;
         case 'log':
           setLogs((prev) => {

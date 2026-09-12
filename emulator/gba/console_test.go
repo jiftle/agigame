@@ -24,6 +24,7 @@ func TestHeadlessRun(t *testing.T) {
 	for i := 0; i < 30; i++ {
 		c.SetButton(gb.ButtonRight, i%2 == 0)
 		c.Step()
+		c.DrainPCM()
 	}
 
 	if got := len(c.Pixels()); got != Width*Height*4 {
@@ -31,6 +32,26 @@ func TestHeadlessRun(t *testing.T) {
 	}
 	if c.FrameCount() == 0 {
 		t.Fatalf("expected frames to advance")
+	}
+
+	if c.SampleRate() != SampleRate {
+		t.Fatalf("sample rate = %d", c.SampleRate())
+	}
+
+	// Drain audio every frame (required to avoid backpressure stalling) and
+	// verify we get a plausible amount of PCM for the elapsed frames.
+	var audioBytes int
+	for i := 0; i < 120; i++ {
+		c.Step()
+		audioBytes += len(c.DrainPCM())
+	}
+	if audioBytes == 0 {
+		t.Fatalf("no PCM produced")
+	}
+	fps := FPS
+	expected := int(float64(120) / fps * SampleRate * 4)
+	if audioBytes < expected*8/10 || audioBytes > expected*12/10 {
+		t.Fatalf("PCM bytes = %d, expected ~%d", audioBytes, expected)
 	}
 
 	c.SetPaused(true)
