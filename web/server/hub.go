@@ -25,12 +25,18 @@ func NewHub() *Hub {
 	}
 }
 
+// outMsg is a queued outbound websocket message (text JSON or a binary frame).
+type outMsg struct {
+	data   []byte
+	binary bool
+}
+
 // Add registers a client and starts its write pump.
 func (h *Hub) Add(conn *websocket.Conn) *Client {
 	c := &Client{
 		hub:  h,
 		conn: conn,
-		send: make(chan []byte, sendBuffer),
+		send: make(chan outMsg, sendBuffer),
 	}
 	h.mu.Lock()
 	h.clients[c] = struct{}{}
@@ -61,11 +67,20 @@ func (h *Hub) BroadcastJSON(v any) {
 
 // BroadcastRaw sends raw JSON bytes to every client, non-blocking.
 func (h *Hub) BroadcastRaw(data []byte) {
+	h.broadcast(outMsg{data: data})
+}
+
+// BroadcastBinary sends a binary message (raw frame) to every client.
+func (h *Hub) BroadcastBinary(data []byte) {
+	h.broadcast(outMsg{data: data, binary: true})
+}
+
+func (h *Hub) broadcast(m outMsg) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	for c := range h.clients {
 		select {
-		case c.send <- data:
+		case c.send <- m:
 		default:
 			// Client is slow; drop this message for it.
 		}
@@ -76,7 +91,7 @@ func (h *Hub) BroadcastRaw(data []byte) {
 type Client struct {
 	hub  *Hub
 	conn *websocket.Conn
-	send chan []byte
+	send chan outMsg
 }
 
 // readPump drains inbound messages into the handler.
@@ -96,8 +111,12 @@ func (c *Client) readPump(handle func([]byte)) {
 
 // writePump flushes the outbound queue to the socket.
 func (c *Client) writePump() {
-	for data := range c.send {
-		if err := c.conn.WriteMessage(websocket.TextMessage, data); err != nil {
+	for m := range c.send {
+		mt := websocket.TextMessage
+		if m.binary {
+			mt = websocket.BinaryMessage
+		}
+		if err := c.conn.WriteMessage(mt, m.data); err != nil {
 			return
 		}
 	}

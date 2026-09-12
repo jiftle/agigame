@@ -8,10 +8,15 @@ import (
 	"agigame/emulator/core/gb"
 )
 
-// Frame is a rendered, PNG-encoded emulator frame.
+// Frame is a rendered emulator frame. PNG is always set (for the standalone
+// web UI); RGBA/Width/Height are set for consoles that expose a raw
+// framebuffer (GBA), letting hosts ship binary frames without PNG decoding.
 type Frame struct {
-	PNG  []byte
-	Tick uint64
+	PNG    []byte
+	Tick   uint64
+	RGBA   []byte
+	Width  int
+	Height int
 }
 
 // Audio is a chunk of stereo s16le PCM produced by a console's APU.

@@ -68,6 +68,7 @@ let frameRate = 0;
 function connect() {
   const proto = location.protocol === "https:" ? "wss" : "ws";
   ws = new WebSocket(`${proto}://${location.host}/ws`);
+  ws.binaryType = "arraybuffer";
 
   ws.onopen = () => {
     el.conn.textContent = "已连接";
@@ -85,6 +86,11 @@ function connect() {
   };
 
   ws.onmessage = (e) => {
+    // 二进制帧：magic(4)|width(2)|height(2)|tick(8)|RGBA，直接 putImageData。
+    if (e.data instanceof ArrayBuffer) {
+      drawBinaryFrame(e.data);
+      return;
+    }
     let msg;
     try {
       msg = JSON.parse(e.data);
@@ -125,8 +131,28 @@ function send(obj) {
 let pendingFrame = null;
 let frameRaf = null;
 
+const BINARY_MAGIC = [0x41, 0x47, 0x46, 0x4d]; // 'AGFM'
+
+function drawBinaryFrame(buf) {
+  if (buf.byteLength < 16) return;
+  const bytes = new Uint8Array(buf);
+  for (let i = 0; i < 4; i++) {
+    if (bytes[i] !== BINARY_MAGIC[i]) return;
+  }
+  const view = new DataView(buf);
+  const width = view.getUint16(4, true);
+  const height = view.getUint16(6, true);
+  const tick = Number(view.getBigUint64(8, true));
+  if (width <= 0 || height <= 0 || buf.byteLength < 16 + width * height * 4) return;
+  pendingFrame = { rgba: new Uint8ClampedArray(buf, 16, width * height * 4), width, height };
+  lastTick = tick;
+  if (frameRaf === null) {
+    frameRaf = requestAnimationFrame(flushFrame);
+  }
+}
+
 function drawFrame(imgBase64, tick) {
-  pendingFrame = imgBase64;
+  pendingFrame = { imgBase64 };
   if (frameRaf === null) {
     frameRaf = requestAnimationFrame(flushFrame);
   }
@@ -135,15 +161,23 @@ function drawFrame(imgBase64, tick) {
 
 function flushFrame() {
   frameRaf = null;
-  const data = pendingFrame;
+  const frame = pendingFrame;
   pendingFrame = null;
-  if (!data) return;
-  const img = new Image();
-  img.onload = () => {
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-  };
-  img.src = "data:image/png;base64," + data;
+  if (!frame) return;
+
+  if (frame.rgba) {
+    if (canvas.width !== frame.width) canvas.width = frame.width;
+    if (canvas.height !== frame.height) canvas.height = frame.height;
+    const imgData = new ImageData(frame.rgba, frame.width, frame.height);
+    ctx.putImageData(imgData, 0, 0);
+  } else if (frame.imgBase64) {
+    const img = new Image();
+    img.onload = () => {
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    };
+    img.src = "data:image/png;base64," + frame.imgBase64;
+  }
 
   const now = performance.now();
   if (lastFrameAt) {

@@ -3,6 +3,7 @@ package emu
 import (
 	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -41,7 +42,7 @@ type session struct {
 	cancel    context.CancelFunc
 
 	mu   sync.Mutex
-	subs map[chan []byte]struct{}
+	subs map[chan service.EmuMessage]struct{}
 }
 
 func init() {
@@ -170,7 +171,7 @@ func (m *sEmu) Start(ctx context.Context, in *model.EmuStartInput) (*model.EmuSe
 		game:      game,
 		rom:       romPath,
 		createdAt: time.Now(),
-		subs:      make(map[chan []byte]struct{}),
+		subs:      make(map[chan service.EmuMessage]struct{}),
 	}
 
 	eng, err := engine.New(engine.Config{
@@ -329,11 +330,32 @@ func (s *session) onFrame(f engine.Frame) {
 	if !s.hasSubs() {
 		return
 	}
+	// 有原始 RGBA（GBA）时发二进制帧：帧头 + 像素，前端直接 putImageData，
+	// 免去 base64/PNG 编解码，消除前端解码堆积导致的卡顿。
+	if len(f.RGBA) > 0 && f.Width > 0 && f.Height > 0 {
+		s.broadcast(encodeBinaryFrame(f))
+		return
+	}
 	s.broadcastJSON(frameMsg{
 		Type: "frame",
 		Img:  base64.StdEncoding.EncodeToString(f.PNG),
 		Tick: f.Tick,
 	})
+}
+
+// binaryMagic 标识二进制帧消息，帧头为：
+// magic(4) | width(2 LE) | height(2 LE) | tick(8 LE) | RGBA(width*height*4)
+var binaryMagic = [4]byte{'A', 'G', 'F', 'M'}
+
+func encodeBinaryFrame(f engine.Frame) service.EmuMessage {
+	const header = 4 + 2 + 2 + 8
+	buf := make([]byte, header+len(f.RGBA))
+	copy(buf[0:4], binaryMagic[:])
+	binary.LittleEndian.PutUint16(buf[4:6], uint16(f.Width))
+	binary.LittleEndian.PutUint16(buf[6:8], uint16(f.Height))
+	binary.LittleEndian.PutUint64(buf[8:16], f.Tick)
+	copy(buf[header:], f.RGBA)
+	return service.EmuMessage{Data: buf, Binary: true}
 }
 
 func (s *session) onState(u engine.StateUpdate) {
@@ -361,8 +383,8 @@ func (s *session) logf(level, format string, args ...any) {
 	s.broadcastJSON(logMsg{Type: "log", Level: level, Msg: msg})
 }
 
-func (s *session) subscribe() (<-chan []byte, func()) {
-	ch := make(chan []byte, subBuffer)
+func (s *session) subscribe() (<-chan service.EmuMessage, func()) {
+	ch := make(chan service.EmuMessage, subBuffer)
 	s.mu.Lock()
 	s.subs[ch] = struct{}{}
 	s.mu.Unlock()
@@ -401,15 +423,15 @@ func (s *session) broadcastJSON(v any) {
 	if err != nil {
 		return
 	}
-	s.broadcast(data)
+	s.broadcast(service.EmuMessage{Data: data})
 }
 
-func (s *session) broadcast(data []byte) {
+func (s *session) broadcast(msg service.EmuMessage) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for ch := range s.subs {
 		select {
-		case ch <- data:
+		case ch <- msg:
 		default:
 			// 慢订阅者：丢最旧一条，保证不阻塞仿真
 			select {
@@ -417,7 +439,7 @@ func (s *session) broadcast(data []byte) {
 			default:
 			}
 			select {
-			case ch <- data:
+			case ch <- msg:
 			default:
 			}
 		}

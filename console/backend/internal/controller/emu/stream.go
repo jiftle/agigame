@@ -60,10 +60,14 @@ func (c *cStream) Stream(ctx context.Context, req *api.StreamReq) (res *api.Stre
 		return nil, nil
 	}
 
-	// 下行：把订阅到的 JSON 消息写到 socket。
+	// 下行：二进制帧走 BinaryMessage，其余走 TextMessage。
 	go func() {
 		for msg := range sub.Messages {
-			if err := ws.WriteMessage(websocket.TextMessage, msg); err != nil {
+			mt := websocket.TextMessage
+			if msg.Binary {
+				mt = websocket.BinaryMessage
+			}
+			if err := ws.WriteMessage(mt, msg.Data); err != nil {
 				return
 			}
 		}

@@ -6,10 +6,16 @@ import (
 	"agigame/console/backend/internal/model"
 )
 
+// EmuMessage 是会话实时流的一条消息。Binary 为 true 时 Data 是二进制帧
+// （帧头 + 原始 RGBA），否则 Data 是 JSON 文本。
+type EmuMessage struct {
+	Data   []byte
+	Binary bool
+}
+
 // EmuSubscriber 是对一个模拟器会话实时消息流的订阅句柄。
-// Messages 里是已序列化好的 JSON 消息（hello/frame/state/log）。
 type EmuSubscriber struct {
-	Messages <-chan []byte
+	Messages <-chan EmuMessage
 	Close    func()
 }
 

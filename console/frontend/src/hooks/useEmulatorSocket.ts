@@ -19,8 +19,33 @@ export interface EmuSocketHandle {
   sendConfig: (cfg: EmuConfigInput) => void;
 }
 
-type FrameSink = (dataUrl: string) => void;
+type FrameSink = (frame: FrameData) => void;
+
+/** 一帧画面：优先使用原始 RGBA，否则回退到 PNG dataURL。 */
+export interface FrameData {
+  rgba?: Uint8ClampedArray<ArrayBuffer>;
+  width?: number;
+  height?: number;
+  dataUrl?: string;
+}
 type AudioSink = (pcmBase64: string, rate: number) => void;
+
+const BINARY_MAGIC = [0x41, 0x47, 0x46, 0x4d]; // 'AGFM'
+
+/** 解析二进制帧：magic(4)|width(2)|height(2)|tick(8)|RGBA。 */
+function parseBinaryFrame(buf: ArrayBuffer): FrameData | null {
+  if (buf.byteLength < 16) return null;
+  const bytes = new Uint8Array(buf);
+  for (let i = 0; i < 4; i++) {
+    if (bytes[i] !== BINARY_MAGIC[i]) return null;
+  }
+  const view = new DataView(buf);
+  const width = view.getUint16(4, true);
+  const height = view.getUint16(6, true);
+  const expected = 16 + width * height * 4;
+  if (width <= 0 || height <= 0 || buf.byteLength < expected) return null;
+  return { rgba: new Uint8ClampedArray(buf, 16, width * height * 4), width, height };
+}
 
 /** 建立会话 WebSocket：接收 frame/state/log/audio，下发 keys/control/config。 */
 export function useEmulatorSocket(
@@ -44,12 +69,20 @@ export function useEmulatorSocket(
     const token = getToken();
     const url = `${proto}://${window.location.host}/ws/emu/${sessionId}/stream?token=${encodeURIComponent(token)}`;
     const ws = new WebSocket(url);
+    ws.binaryType = 'arraybuffer';
     wsRef.current = ws;
 
     ws.onopen = () => setConnected(true);
     ws.onclose = () => setConnected(false);
     ws.onerror = () => setConnected(false);
     ws.onmessage = (ev) => {
+      // 二进制帧：直接解析为 RGBA，无 JSON/base64/PNG 解码。
+      if (ev.data instanceof ArrayBuffer) {
+        const frame = parseBinaryFrame(ev.data);
+        if (frame) onFrameRef.current(frame);
+        return;
+      }
+
       let msg: { type?: string } & Record<string, unknown>;
       try {
         msg = JSON.parse(ev.data as string);
@@ -59,7 +92,7 @@ export function useEmulatorSocket(
       switch (msg.type) {
         case 'frame':
           if (typeof msg.img === 'string') {
-            onFrameRef.current(`data:image/png;base64,${msg.img}`);
+            onFrameRef.current({ dataUrl: `data:image/png;base64,${msg.img}` });
           }
           break;
         case 'state':

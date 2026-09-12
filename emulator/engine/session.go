@@ -170,45 +170,66 @@ func (s *Session) Start(ctx context.Context) error {
 	return nil
 }
 
-// startGBA drives the GBA core with our own frame loop. The agent layer is
+// startGBA drives the GBA core with our own frame loop. Pacing uses
+// accumulated time (same rate as the GB core) so the two consoles feel
+// identical and a slow frame cannot accumulate into drift. The agent layer is
 // not supported for GBA yet, so frames and state are emitted without it.
 func (s *Session) startGBA(ctx context.Context) error {
-	fps := gba.FPS
-	interval := time.Duration(float64(time.Second) / fps)
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-
 	go s.runGBAEncoder(ctx)
+
+	start := time.Now()
+	const maxCatchUp = 4
+	var frame uint64
 
 	s.cfg.Logf("info", "emulation started (gba %s)", s.CartName())
 	for {
-		select {
-		case <-ctx.Done():
-			s.cfg.Logf("info", "emulation stopped")
-			return nil
-		case <-ticker.C:
-			if s.gba.Paused() {
-				continue
-			}
-			s.gba.Step()
-			tick := s.gba.FrameCount()
+		frame++
+		target := start.Add(time.Duration(float64(frame) / gba.FPS * float64(time.Second)))
 
-			// Always drain PCM to release the APU ring's backpressure.
-			if pcm := s.gba.DrainPCM(); len(pcm) > 0 {
-				s.emitAudio(Audio{PCM: pcm, SampleRate: s.gba.SampleRate()})
-			}
-
-			if tick%s.frameSkip == 0 {
-				s.queueGBAFrame(tick)
-			}
-			if s.stateInterval > 0 && tick%s.stateInterval == 0 {
-				s.emitState(StateUpdate{
-					Console: "gba",
-					Width:   gba.Width,
-					Height:  gba.Height,
-				})
+		if wait := time.Until(target); wait > 0 {
+			timer := time.NewTimer(wait)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				s.cfg.Logf("info", "emulation stopped")
+				return nil
+			case <-timer.C:
 			}
 		}
+
+		s.stepGBA()
+		for i := 0; i < maxCatchUp; i++ {
+			if time.Since(target) < 0 {
+				break
+			}
+			s.stepGBA()
+			frame++
+		}
+	}
+}
+
+// stepGBA advances the core one frame, emitting audio/frames/state.
+func (s *Session) stepGBA() {
+	if s.gba.Paused() {
+		return
+	}
+	s.gba.Step()
+	tick := s.gba.FrameCount()
+
+	// Always drain PCM to release the APU ring's backpressure.
+	if pcm := s.gba.DrainPCM(); len(pcm) > 0 {
+		s.emitAudio(Audio{PCM: pcm, SampleRate: s.gba.SampleRate()})
+	}
+
+	if tick%s.frameSkip == 0 {
+		s.queueGBAFrame(tick)
+	}
+	if s.stateInterval > 0 && tick%s.stateInterval == 0 {
+		s.emitState(StateUpdate{
+			Console: "gba",
+			Width:   gba.Width,
+			Height:  gba.Height,
+		})
 	}
 }
 
@@ -260,7 +281,13 @@ func (s *Session) runGBAEncoder(ctx context.Context) {
 			cb := s.onFrame
 			s.mu.RUnlock()
 			if cb != nil {
-				cb(Frame{PNG: png, Tick: push.tick})
+				cb(Frame{
+					PNG:    png,
+					Tick:   push.tick,
+					RGBA:   push.pixels,
+					Width:  gba.Width,
+					Height: gba.Height,
+				})
 			}
 		}
 	}

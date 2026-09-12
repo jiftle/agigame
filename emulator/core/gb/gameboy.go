@@ -13,10 +13,13 @@ import (
 const (
 	// ClockSpeed is the number of cycles the GameBoy CPU performs each second.
 	ClockSpeed = 4194304
-	// FramesSecond is the target number of frames for each frame of GameBoy output.
+	// CyclesFrame is the exact number of CPU cycles in one frame of the real
+	// DMG/CGB (70224 cycles => 59.7275 Hz), matching the GBA.
+	CyclesFrame = 70224
+	// FrameRate is the real DMG/CGB refresh rate (59.7275 Hz), used for pacing.
+	FrameRate = float64(ClockSpeed) / float64(CyclesFrame)
+	// FramesSecond is the integer frame rate (kept for compatibility).
 	FramesSecond = 60
-	// CyclesFrame is the number of CPU cycles in each frame.
-	CyclesFrame = ClockSpeed / FramesSecond
 )
 
 // FrameCallback is invoked after each completed frame with the rendered pixel
@@ -171,18 +174,39 @@ func (gb *Gameboy) SetInputProvider(provider InputProvider) {
 }
 
 // Run emulates frames at the real GameBoy framerate until ctx is cancelled.
-// Frames advance on the calling goroutine; return only after ctx.Done().
+// Frames advance on the calling goroutine; returns only after ctx.Done().
+//
+// Pacing is driven by elapsed wall-clock time: the number of frames that
+// should have completed since the start is computed from the real frame rate
+// and any shortfall is caught up (bounded), so a slow frame cannot accumulate
+// into drift and the game never runs faster or slower than real hardware.
 func (gb *Gameboy) Run(ctx context.Context) {
-	frameTime := time.Second / FramesSecond
-	ticker := time.NewTicker(frameTime)
-	defer ticker.Stop()
+	start := time.Now()
+	var done uint64
+	const maxCatchUp = 4 // cap the burst after a long stall/GC pause
 
 	for {
+		due := int64(time.Since(start).Seconds() * FrameRate)
+		for int64(done) < due {
+			// If we are hopelessly behind, resynchronise instead of bursting.
+			if int64(done)+maxCatchUp < due {
+				done = uint64(due - maxCatchUp)
+			}
+			gb.Step()
+			done++
+		}
+
+		nextAt := time.Duration(float64(done+1) / FrameRate * float64(time.Second))
+		wait := nextAt - time.Since(start)
+		if wait <= 0 {
+			continue
+		}
+		timer := time.NewTimer(wait)
 		select {
 		case <-ctx.Done():
+			timer.Stop()
 			return
-		case <-ticker.C:
-			gb.Step()
+		case <-timer.C:
 		}
 	}
 }

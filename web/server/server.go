@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -89,12 +90,32 @@ func (s *Server) onAudio(a engine.Audio) {
 }
 
 // onFrame runs on the session encoder goroutine and broadcasts each frame.
+// GBA frames ship as raw RGBA binary (no base64/PNG decode on the client);
+// GB frames keep the base64 PNG JSON path.
 func (s *Server) onFrame(f engine.Frame) {
+	if len(f.RGBA) > 0 && f.Width > 0 && f.Height > 0 {
+		s.hub.BroadcastBinary(encodeBinaryFrame(f))
+		return
+	}
 	s.hub.BroadcastJSON(FrameMsg{
 		Type: "frame",
 		Img:  base64.StdEncoding.EncodeToString(f.PNG),
 		Tick: f.Tick,
 	})
+}
+
+// binaryMagic 标识二进制帧：magic(4)|width(2 LE)|height(2 LE)|tick(8 LE)|RGBA.
+var binaryMagic = [4]byte{'A', 'G', 'F', 'M'}
+
+func encodeBinaryFrame(f engine.Frame) []byte {
+	const header = 16
+	buf := make([]byte, header+len(f.RGBA))
+	copy(buf[0:4], binaryMagic[:])
+	binary.LittleEndian.PutUint16(buf[4:6], uint16(f.Width))
+	binary.LittleEndian.PutUint16(buf[6:8], uint16(f.Height))
+	binary.LittleEndian.PutUint64(buf[8:16], f.Tick)
+	copy(buf[header:], f.RGBA)
+	return buf
 }
 
 // onState runs periodically on the emulator goroutine and broadcasts state.
@@ -118,7 +139,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := s.hub.Add(conn)
-	client.send <- mustJSON(HelloMsg{
+	client.send <- outMsg{data: mustJSON(HelloMsg{
 		Type:    "hello",
 		Cart:    s.session.CartName(),
 		FPS:     60,
@@ -126,7 +147,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 		Console: s.session.Console(),
 		Width:   s.session.Width(),
 		Height:  s.session.Height(),
-	})
+	})}
 
 	client.readPump(s.handleClientMsg)
 }
