@@ -30,6 +30,19 @@ export interface EmuConfigInput {
   palette?: string;
 }
 
+export interface EmuRomInfo {
+  name: string;
+  title: string;
+  console: string;
+  ext: string;
+  size: number;
+}
+
+export async function queryRomList(): Promise<EmuRomInfo[]> {
+  const res = await request<ApiResult<{ list: EmuRomInfo[] }>>('/emu/rom/list');
+  return res.data.list || [];
+}
+
 export async function querySessionList(): Promise<EmuSessionInfo[]> {
   const res = await request<ApiResult<{ list: EmuSessionInfo[] }>>('/emu/session/list');
   return res.data.list || [];

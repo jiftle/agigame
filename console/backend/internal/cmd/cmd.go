@@ -44,6 +44,7 @@ var Main = gcmd.Command{
 					system.NewConfig(),
 					system.NewLog(),
 					emu.NewSession(),
+					emu.NewRom(),
 				)
 			})
 		})

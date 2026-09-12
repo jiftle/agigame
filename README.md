@@ -109,7 +109,7 @@ make console-install     # 安装控制台前端依赖
 make dev-console         # 仅启动控制台（后端 :8000 / 前端 :8001），默认 admin/123456
 ```
 
-控制台 ROM 目录由 `console/backend/manifest/config/config.yaml` 的 `emulator.romDir` 配置（默认 `../../roms`）。
+控制台 ROM 目录由 `console/backend/manifest/config/config.yaml` 的 `emulator.romDir` 配置（默认 `../../roms`）。启动会话时「选择游戏」会列出该目录下的 `.gb/.gbc/.gba`（读取 ROM 标题），并自动匹配平台。
 
 ## GBA 支持
 

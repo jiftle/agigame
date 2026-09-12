@@ -30,3 +30,12 @@ type EmuConfigInput struct {
 	Mode    string `json:"mode"`
 	Palette string `json:"palette"`
 }
+
+// EmuRomInfo 描述 romDir 里一个可选 ROM。
+type EmuRomInfo struct {
+	Name    string `json:"name"`    // 文件名（启动会话时传它）
+	Title   string `json:"title"`   // ROM 内部标题
+	Console string `json:"console"` // gb | gba
+	Ext     string `json:"ext"`
+	Size    int64  `json:"size"`
+}

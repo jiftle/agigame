@@ -16,6 +16,7 @@ type EmuSubscriber struct {
 // IEmu 模拟器会话服务。
 type IEmu interface {
 	List(ctx context.Context) []*model.EmuSessionInfo
+	ListRoms(ctx context.Context) ([]*model.EmuRomInfo, error)
 	Start(ctx context.Context, in *model.EmuStartInput) (*model.EmuSessionInfo, error)
 	Get(ctx context.Context, id string) (*model.EmuSessionInfo, error)
 	Stop(ctx context.Context, id string) error

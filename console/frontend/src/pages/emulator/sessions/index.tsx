@@ -1,19 +1,27 @@
-import type { ActionType, ProColumns } from '@ant-design/pro-components';
-import { ModalForm, PageContainer, ProFormSelect, ProFormText, ProTable } from '@ant-design/pro-components';
+import type { ActionType, ProColumns, ProFormInstance } from '@ant-design/pro-components';
+import { ModalForm, PageContainer, ProFormSelect, ProTable } from '@ant-design/pro-components';
 import { Access, useAccess } from '@/access';
 import { Button, Popconfirm, Tag } from 'antd';
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { message } from '@/utils/antdApp';
 
-import type { EmuSessionInfo, EmuStartInput } from '@/services/emulator';
-import { querySessionList, startSession, stopSession } from '@/services/emulator';
+import type { EmuRomInfo, EmuSessionInfo, EmuStartInput } from '@/services/emulator';
+import { queryRomList, querySessionList, startSession, stopSession } from '@/services/emulator';
 
 export default function EmulatorSessionsPage() {
   const actionRef = useRef<ActionType | undefined>(undefined);
+  const formRef = useRef<ProFormInstance<EmuStartInput> | undefined>(undefined);
   const access = useAccess();
   const navigate = useNavigate();
+  const [roms, setRoms] = useState<EmuRomInfo[]>([]);
+
+  useEffect(() => {
+    queryRomList()
+      .then(setRoms)
+      .catch(() => undefined);
+  }, []);
 
   const columns: ProColumns<EmuSessionInfo>[] = [
     { title: '会话ID', dataIndex: 'id', width: 120, search: false },
@@ -81,7 +89,16 @@ export default function EmulatorSessionsPage() {
               title="启动模拟器会话"
               trigger={<Button type="primary">启动会话</Button>}
               modalProps={{ destroyOnClose: true }}
+              formRef={formRef}
               initialValues={{ console: 'gb', game: 'sml', mode: 'rules', palette: 'greyscale' }}
+              onValuesChange={(changed) => {
+                if (changed.rom) {
+                  const rom = roms.find((r) => r.name === changed.rom);
+                  if (rom) {
+                    formRef.current?.setFieldsValue({ console: rom.console });
+                  }
+                }
+              }}
               onFinish={async (values) => {
                 const session = await startSession(values);
                 message.success(`会话已启动：${session.id}`);
@@ -91,22 +108,28 @@ export default function EmulatorSessionsPage() {
               }}
             >
               <ProFormSelect
+                name="rom"
+                label="选择游戏"
+                tooltip={`来自 ${'emulator.romDir'}，仅列出 .gb/.gbc/.gba`}
+                placeholder={roms.length ? '请选择游戏' : 'roms 目录下暂无 ROM'}
+                options={roms.map((r) => ({
+                  label: `${r.title || r.name}（${r.console.toUpperCase()} · ${r.name}）`,
+                  value: r.name,
+                }))}
+              />
+              <ProFormSelect
                 name="console"
                 label="平台"
+                tooltip="选择游戏后自动匹配；也可手动指定"
                 options={[
                   { label: 'Game Boy / GBC', value: 'gb' },
                   { label: 'Game Boy Advance', value: 'gba' },
                 ]}
               />
-              <ProFormText
-                name="rom"
-                label="ROM 文件名"
-                tooltip="留空使用服务端默认 ROM；相对 emulator.romDir。GBA 填 .gba 文件"
-                placeholder="super-mario-land.gb"
-              />
               <ProFormSelect
                 name="game"
                 label="游戏插件"
+                tooltip="仅 GB 会话的 Agent 使用"
                 options={[{ label: 'Super Mario Land', value: 'sml' }]}
               />
               <ProFormSelect

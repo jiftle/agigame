@@ -5,6 +5,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -65,6 +67,77 @@ func (m *sEmu) List(ctx context.Context) []*model.EmuSessionInfo {
 		out = append(out, s.info())
 	}
 	return out
+}
+
+// ListRoms 扫描 emulator.romDir 下的 .gb/.gbc/.gba 文件供前端选择。
+func (m *sEmu) ListRoms(ctx context.Context) ([]*model.EmuRomInfo, error) {
+	dir := g.Cfg().MustGet(ctx, "emulator.romDir", "./roms").String()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, errcode.Business(fmt.Sprintf("读取 ROM 目录失败: %v", err))
+	}
+	out := make([]*model.EmuRomInfo, 0, len(entries))
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		ext := strings.ToLower(filepath.Ext(e.Name()))
+		var console string
+		switch ext {
+		case ".gba":
+			console = "gba"
+		case ".gb", ".gbc":
+			console = "gb"
+		default:
+			continue
+		}
+		var size int64
+		if info, err := e.Info(); err == nil {
+			size = info.Size()
+		}
+		full := filepath.Join(dir, e.Name())
+		out = append(out, &model.EmuRomInfo{
+			Name:    e.Name(),
+			Title:   romTitle(full, console),
+			Console: console,
+			Ext:     ext,
+			Size:    size,
+		})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out, nil
+}
+
+// romTitle 读取 ROM 内部标题（GB:0x134，GBA:0xA0）。
+func romTitle(path, console string) string {
+	f, err := os.Open(path)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+
+	if console == "gba" {
+		buf := make([]byte, 0xC0)
+		n, _ := io.ReadFull(f, buf)
+		if n < 0xAC {
+			return ""
+		}
+		return trimRomTitle(buf[0xA0:0xAC])
+	}
+	buf := make([]byte, 0x144)
+	n, _ := io.ReadFull(f, buf)
+	if n < 0x144 {
+		return ""
+	}
+	return trimRomTitle(buf[0x134:0x144])
+}
+
+func trimRomTitle(b []byte) string {
+	s := string(b)
+	if i := strings.IndexByte(s, 0); i >= 0 {
+		s = s[:i]
+	}
+	return strings.TrimSpace(s)
 }
 
 func (m *sEmu) Start(ctx context.Context, in *model.EmuStartInput) (*model.EmuSessionInfo, error) {
