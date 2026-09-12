@@ -1,4 +1,4 @@
-import { DashboardOutlined, ExperimentOutlined, SettingOutlined } from '@ant-design/icons';
+import { DashboardOutlined, ExperimentOutlined, SettingOutlined, VideoCameraOutlined } from '@ant-design/icons';
 import type { ReactNode } from 'react';
 
 export interface MenuItemConfig {
@@ -32,6 +32,12 @@ const demoMenu: MenuItemConfig[] = [
 
 export const menuConfig: MenuItemConfig[] = [
   { path: '/dashboard', name: '仪表盘', icon: <DashboardOutlined /> },
+  {
+    path: '/emulator',
+    name: '模拟器',
+    icon: <VideoCameraOutlined />,
+    children: [{ path: '/emulator/sessions', name: '会话管理', access: 'emu:session:list' }],
+  },
   { path: '/system', name: '系统管理', icon: <SettingOutlined />, children: systemMenu },
   ...(import.meta.env.DEV
     ? [{ path: '/demo', name: '示例页面', icon: <ExperimentOutlined />, children: demoMenu }]

@@ -32,6 +32,8 @@ const ALL_PERMS = [
   'system:operlog:remove',
   'system:loginlog:list',
   'system:loginlog:remove',
+  'emu:session:list',
+  'emu:session:control',
 ];
 
 /** 由后端返回的权限标识生成前端访问开关 */
@@ -41,6 +43,7 @@ export function buildAccess(perms: string[] = [], isSuper = false): AccessMap {
 
   const result: AccessMap = {
     canSystem: has('system:user:list') || has('system:role:list'),
+    canEmulator: has('emu:session:list'),
   };
   ALL_PERMS.forEach((perm) => {
     result[perm] = has(perm);

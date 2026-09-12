@@ -21,6 +21,9 @@ const ConfigPage = lazy(() => import('@/pages/system/config'));
 const OperLogPage = lazy(() => import('@/pages/system/oper-log'));
 const LoginLogPage = lazy(() => import('@/pages/system/login-log'));
 
+const EmulatorSessions = lazy(() => import('@/pages/emulator/sessions'));
+const EmulatorSessionDetail = lazy(() => import('@/pages/emulator/sessions/detail'));
+
 const DemoForm = lazy(() => import('@/pages/demo/form'));
 const DemoTable = lazy(() => import('@/pages/demo/table'));
 const DemoDetail = lazy(() => import('@/pages/demo/detail'));
@@ -76,6 +79,16 @@ export default function AppRoutes() {
           <Route path="/system/config" element={guard('system:config:list', <ConfigPage />)} />
           <Route path="/system/oper-log" element={guard('system:operlog:list', <OperLogPage />)} />
           <Route path="/system/login-log" element={guard('system:loginlog:list', <LoginLogPage />)} />
+
+          <Route path="/emulator" element={<Navigate to="/emulator/sessions" replace />} />
+          <Route
+            path="/emulator/sessions"
+            element={guard('emu:session:list', <EmulatorSessions />)}
+          />
+          <Route
+            path="/emulator/sessions/:id"
+            element={guard('emu:session:list', <EmulatorSessionDetail />)}
+          />
 
           {demoRoutes}
         </Route>

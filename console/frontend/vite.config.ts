@@ -32,6 +32,14 @@ export default defineConfig(({ mode }) => {
             'http://127.0.0.1:8000',
           changeOrigin: true,
         },
+        '/ws': {
+          target:
+            process.env.VITE_PROXY_TARGET ||
+            env.VITE_PROXY_TARGET ||
+            'http://127.0.0.1:8000',
+          changeOrigin: true,
+          ws: true,
+        },
       },
     },
     build: {
