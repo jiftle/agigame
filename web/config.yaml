@@ -4,7 +4,7 @@ server:
   port: 8080
 emulator:
   fps: 60
-  frame_skip: 4          # N 帧推送一次画面到前端（60/4 = 15fps）
+  frame_skip: 1          # N 帧推送一次画面到前端（1 = 每帧，最高流畅度）
   save_path: ./saves/
   cgb: false
   console: gb           # gb | gba（gba 需把 rom 换成 .gba 文件）

@@ -11,7 +11,7 @@ import (
 const (
 	DefaultGame          = "sml"
 	DefaultConsole       = "gb" // gb | gba
-	DefaultFrameSkip     = 4
+	DefaultFrameSkip     = 1
 	DefaultStateInterval = 5
 )
 

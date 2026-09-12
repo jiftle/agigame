@@ -44,9 +44,16 @@ export default function EmulatorSessionDetailPage() {
 
   autoRef.current = auto;
 
-  const drawFrame = (dataUrl: string) => {
+  // 用 rAF 合并待画帧：只保留最新一帧，避免解码/绘制堆积造成卡顿。
+  const pendingFrame = useRef<string | null>(null);
+  const rafId = useRef<number | null>(null);
+
+  const flushFrame = () => {
+    rafId.current = null;
+    const dataUrl = pendingFrame.current;
+    pendingFrame.current = null;
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!dataUrl || !canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     const img = new Image();
@@ -55,6 +62,13 @@ export default function EmulatorSessionDetailPage() {
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     };
     img.src = dataUrl;
+  };
+
+  const drawFrame = (dataUrl: string) => {
+    pendingFrame.current = dataUrl;
+    if (rafId.current === null) {
+      rafId.current = requestAnimationFrame(flushFrame);
+    }
   };
 
   const socket = useEmulatorSocket(id, drawFrame, (pcm, rate) => player.playPcm(pcm, rate));

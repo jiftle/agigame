@@ -122,13 +122,28 @@ function send(obj) {
 
 // --- Rendering --------------------------------------------------------------
 
+let pendingFrame = null;
+let frameRaf = null;
+
 function drawFrame(imgBase64, tick) {
+  pendingFrame = imgBase64;
+  if (frameRaf === null) {
+    frameRaf = requestAnimationFrame(flushFrame);
+  }
+  lastTick = tick;
+}
+
+function flushFrame() {
+  frameRaf = null;
+  const data = pendingFrame;
+  pendingFrame = null;
+  if (!data) return;
   const img = new Image();
   img.onload = () => {
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   };
-  img.src = "data:image/png;base64," + imgBase64;
+  img.src = "data:image/png;base64," + data;
 
   const now = performance.now();
   if (lastFrameAt) {
@@ -136,7 +151,6 @@ function drawFrame(imgBase64, tick) {
     frameRate = Math.round(1 / dt);
   }
   lastFrameAt = now;
-  lastTick = tick;
 }
 
 function applyScreenSize(w, h) {

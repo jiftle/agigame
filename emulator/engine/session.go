@@ -21,6 +21,13 @@ type framePush struct {
 	tick uint64
 }
 
+// gbaFramePush carries a copy of the GBA RGBA framebuffer for off-thread
+// encoding.
+type gbaFramePush struct {
+	pixels []byte
+	tick   uint64
+}
+
 // Session owns one running handheld: emulator, decision agent, input
 // aggregation and the encoded frame pipeline. It is transport-agnostic; hosts
 // register callbacks and forward them over their own protocol.
@@ -37,6 +44,8 @@ type Session struct {
 	stateInterval uint64
 
 	frames chan framePush
+
+	gbaFrames chan gbaFramePush
 
 	mu      sync.RWMutex
 	onFrame func(Frame)
@@ -60,6 +69,7 @@ func New(cfg Config) (*Session, error) {
 			gba:           core,
 			frameSkip:     uint64(cfg.FrameSkip),
 			stateInterval: cfg.StateInterval,
+			gbaFrames:     make(chan gbaFramePush, 1),
 		}, nil
 	}
 
@@ -168,6 +178,8 @@ func (s *Session) startGBA(ctx context.Context) error {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
+	go s.runGBAEncoder(ctx)
+
 	s.cfg.Logf("info", "emulation started (gba %s)", s.CartName())
 	for {
 		select {
@@ -187,14 +199,7 @@ func (s *Session) startGBA(ctx context.Context) error {
 			}
 
 			if tick%s.frameSkip == 0 {
-				if png := encodeRGBA(s.gba.Pixels(), gba.Width, gba.Height); png != nil {
-					s.mu.RLock()
-					cb := s.onFrame
-					s.mu.RUnlock()
-					if cb != nil {
-						cb(Frame{PNG: png, Tick: tick})
-					}
-				}
+				s.queueGBAFrame(tick)
 			}
 			if s.stateInterval > 0 && tick%s.stateInterval == 0 {
 				s.emitState(StateUpdate{
@@ -214,6 +219,50 @@ func (s *Session) emitState(u StateUpdate) {
 	s.mu.RUnlock()
 	if cb != nil {
 		cb(u)
+	}
+}
+
+// queueGBAFrame copies the current framebuffer into the encode queue
+// (latest-wins) so PNG encoding and broadcasting stay off the emulation
+// goroutine and never add jitter to frame pacing.
+func (s *Session) queueGBAFrame(tick uint64) {
+	pixels := s.gba.Pixels()
+	cp := make([]byte, len(pixels))
+	copy(cp, pixels)
+
+	push := gbaFramePush{pixels: cp, tick: tick}
+	select {
+	case s.gbaFrames <- push:
+	default:
+		select {
+		case <-s.gbaFrames:
+		default:
+		}
+		select {
+		case s.gbaFrames <- push:
+		default:
+		}
+	}
+}
+
+// runGBAEncoder PNG-encodes queued GBA frames and invokes the frame callback.
+func (s *Session) runGBAEncoder(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case push := <-s.gbaFrames:
+			png := encodeRGBA(push.pixels, gba.Width, gba.Height)
+			if png == nil {
+				continue
+			}
+			s.mu.RLock()
+			cb := s.onFrame
+			s.mu.RUnlock()
+			if cb != nil {
+				cb(Frame{PNG: png, Tick: push.tick})
+			}
+		}
 	}
 }
 

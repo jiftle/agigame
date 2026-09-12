@@ -56,7 +56,7 @@ func DefaultConfig() *Config {
 		},
 		Emulator: EmulatorConfig{
 			FPS:       60,
-			FrameSkip: 4,
+			FrameSkip: 1,
 			SavePath:  "./saves/",
 			Palette:   "greyscale",
 			Console:   "gb",

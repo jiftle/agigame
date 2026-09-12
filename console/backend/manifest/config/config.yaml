@@ -44,4 +44,4 @@ emulator:
   defaultRom: "super-mario-land.gb" # GB 默认 ROM
   defaultGbaRom: ""                 # GBA 默认 ROM（可选，如 "game.gba"）
   palette: "greyscale"              # greyscale | original | bgb
-  frameSkip: 4                      # 每 N 帧推一帧到前端
+  frameSkip: 1                      # 每 N 帧推一帧到前端（1 = 每帧）
