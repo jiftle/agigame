@@ -38,6 +38,7 @@ func New(cfg *Config) (*Server, error) {
 
 	session, err := engine.New(engine.Config{
 		ROM:           cfg.ROM,
+		Console:       cfg.Emulator.Console,
 		Game:          cfg.Game,
 		Palette:       cfg.Emulator.Palette,
 		CGB:           cfg.Emulator.CGB,
@@ -88,7 +89,14 @@ func (s *Server) onFrame(f engine.Frame) {
 
 // onState runs periodically on the emulator goroutine and broadcasts state.
 func (s *Server) onState(u engine.StateUpdate) {
-	s.hub.BroadcastJSON(StateMsg{Type: "state", State: u.State, Agent: u.Agent})
+	s.hub.BroadcastJSON(StateMsg{
+		Type:    "state",
+		State:   u.State,
+		Agent:   u.Agent,
+		Console: u.Console,
+		Width:   u.Width,
+		Height:  u.Height,
+	})
 }
 
 // handleWS upgrades and serves a websocket client connection.
@@ -101,10 +109,13 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 
 	client := s.hub.Add(conn)
 	client.send <- mustJSON(HelloMsg{
-		Type: "hello",
-		Cart: s.session.CartName(),
-		FPS:  60,
-		Game: s.cfg.Game,
+		Type:    "hello",
+		Cart:    s.session.CartName(),
+		FPS:     60,
+		Game:    s.cfg.Game,
+		Console: s.session.Console(),
+		Width:   s.session.Width(),
+		Height:  s.session.Height(),
 	})
 
 	client.readPump(s.handleClientMsg)

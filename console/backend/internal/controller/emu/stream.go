@@ -53,7 +53,8 @@ func (c *cStream) Stream(ctx context.Context, req *api.StreamReq) (res *api.Stre
 	}
 
 	hello, _ := json.Marshal(map[string]any{
-		"type": "hello", "id": info.Id, "cart": info.Cart, "game": info.Game, "fps": 60,
+		"type": "hello", "id": info.Id, "cart": info.Cart, "game": info.Game,
+		"console": info.Console, "width": info.Width, "height": info.Height, "fps": 60,
 	})
 	if err = ws.WriteMessage(websocket.TextMessage, hello); err != nil {
 		return nil, nil

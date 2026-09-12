@@ -6,10 +6,12 @@ import (
 	"log"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"agigame/emulator/agent"
 	"agigame/emulator/agent/games"
 	"agigame/emulator/core/gb"
+	"agigame/emulator/gba"
 )
 
 // framePush carries a rendered frame pointer added to the encode queue with
@@ -19,14 +21,16 @@ type framePush struct {
 	tick uint64
 }
 
-// Session owns one running GameBoy: emulator, decision agent, input
+// Session owns one running handheld: emulator, decision agent, input
 // aggregation and the encoded frame pipeline. It is transport-agnostic; hosts
 // register callbacks and forward them over their own protocol.
 type Session struct {
-	cfg   Config
-	gb    *gb.Gameboy
-	agent *agent.Agent
-	input *InputState
+	cfg     Config
+	console string
+	gb      *gb.Gameboy
+	gba     *gba.Console
+	agent   *agent.Agent
+	input   *InputState
 
 	auto          atomic.Bool
 	frameSkip     uint64
@@ -43,6 +47,20 @@ type Session struct {
 // emulation; call Start.
 func New(cfg Config) (*Session, error) {
 	cfg.normalize()
+
+	if cfg.Console == "gba" {
+		core, err := gba.New(cfg.ROM)
+		if err != nil {
+			return nil, err
+		}
+		return &Session{
+			cfg:           cfg,
+			console:       "gba",
+			gba:           core,
+			frameSkip:     uint64(cfg.FrameSkip),
+			stateInterval: cfg.StateInterval,
+		}, nil
+	}
 
 	plugin, ok := games.Get(cfg.Game)
 	if !ok {
@@ -74,6 +92,7 @@ func New(cfg Config) (*Session, error) {
 
 	s := &Session{
 		cfg:           cfg,
+		console:       "gb",
 		gb:            gameboy,
 		input:         NewInputState(),
 		frameSkip:     uint64(cfg.FrameSkip),
@@ -103,6 +122,9 @@ func (s *Session) SetStateCallback(cb func(StateUpdate)) {
 // Start wires the emulator callbacks and runs the emulation loop until ctx is
 // cancelled. It blocks; hosts normally call it from a goroutine.
 func (s *Session) Start(ctx context.Context) error {
+	if s.gba != nil {
+		return s.startGBA(ctx)
+	}
 	s.gb.SetInputProvider(s.input)
 	s.gb.SetPreFrameCallback(s.onPreFrame)
 	s.gb.SetFrameCallback(s.onRawFrame)
@@ -117,6 +139,57 @@ func (s *Session) Start(ctx context.Context) error {
 	s.gb.Run(ctx)
 	s.cfg.Logf("info", "emulation stopped")
 	return nil
+}
+
+// startGBA drives the GBA core with our own frame loop. The agent layer is
+// not supported for GBA yet, so frames and state are emitted without it.
+func (s *Session) startGBA(ctx context.Context) error {
+	fps := gba.FPS
+	interval := time.Duration(float64(time.Second) / fps)
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	s.cfg.Logf("info", "emulation started (gba %s)", s.CartName())
+	for {
+		select {
+		case <-ctx.Done():
+			s.cfg.Logf("info", "emulation stopped")
+			return nil
+		case <-ticker.C:
+			if s.gba.Paused() {
+				continue
+			}
+			s.gba.Step()
+			tick := s.gba.FrameCount()
+			if tick%s.frameSkip == 0 {
+				if png := encodeRGBA(s.gba.Pixels(), gba.Width, gba.Height); png != nil {
+					s.mu.RLock()
+					cb := s.onFrame
+					s.mu.RUnlock()
+					if cb != nil {
+						cb(Frame{PNG: png, Tick: tick})
+					}
+				}
+			}
+			if s.stateInterval > 0 && tick%s.stateInterval == 0 {
+				s.emitState(StateUpdate{
+					Console: "gba",
+					Width:   gba.Width,
+					Height:  gba.Height,
+				})
+			}
+		}
+	}
+}
+
+// emitState invokes the state callback (if any).
+func (s *Session) emitState(u StateUpdate) {
+	s.mu.RLock()
+	cb := s.onState
+	s.mu.RUnlock()
+	if cb != nil {
+		cb(u)
+	}
 }
 
 // onPreFrame runs on the emulator goroutine before each frame advances and
@@ -173,48 +246,98 @@ func (s *Session) runEncoder(ctx context.Context) {
 // onGBState assembles a state update (with the agent summary in auto mode) and
 // invokes the state callback on the emulator goroutine.
 func (s *Session) onGBState(state gb.State) {
-	u := StateUpdate{State: state, Auto: s.auto.Load()}
+	u := StateUpdate{
+		State:   state,
+		Auto:    s.auto.Load(),
+		Console: "gb",
+		Width:   gb.ScreenWidth,
+		Height:  gb.ScreenHeight,
+	}
 	if u.Auto {
 		u.Agent = s.agent.Status()
 	}
-	s.mu.RLock()
-	cb := s.onState
-	s.mu.RUnlock()
-	if cb != nil {
-		cb(u)
-	}
+	s.emitState(u)
 }
 
 // --- lifecycle ---------------------------------------------------------------
 
 // Reset requests an emulator reset on the next frame.
-func (s *Session) Reset() { s.gb.RequestReset() }
+func (s *Session) Reset() {
+	if s.gba != nil {
+		s.gba.Reset()
+		return
+	}
+	s.gb.RequestReset()
+}
 
 // SetPaused pauses or resumes emulation.
-func (s *Session) SetPaused(paused bool) { s.gb.SetPaused(paused) }
+func (s *Session) SetPaused(paused bool) {
+	if s.gba != nil {
+		s.gba.SetPaused(paused)
+		return
+	}
+	s.gb.SetPaused(paused)
+}
 
 // IsPaused reports whether emulation is paused.
-func (s *Session) IsPaused() bool { return s.gb.IsPaused() }
+func (s *Session) IsPaused() bool {
+	if s.gba != nil {
+		return s.gba.Paused()
+	}
+	return s.gb.IsPaused()
+}
 
 // --- input -------------------------------------------------------------------
 
 // Press marks the given buttons as held.
-func (s *Session) Press(buttons ...gb.Button) { s.input.Press(buttons...) }
+func (s *Session) Press(buttons ...gb.Button) {
+	if s.gba != nil {
+		for _, b := range buttons {
+			s.gba.SetButton(b, true)
+		}
+		return
+	}
+	s.input.Press(buttons...)
+}
 
 // Release marks the given buttons as released.
-func (s *Session) Release(buttons ...gb.Button) { s.input.Release(buttons...) }
+func (s *Session) Release(buttons ...gb.Button) {
+	if s.gba != nil {
+		for _, b := range buttons {
+			s.gba.SetButton(b, false)
+		}
+		return
+	}
+	s.input.Release(buttons...)
+}
 
 // SetInput sets a single button's held state (agent InputSink compatible).
-func (s *Session) SetInput(button gb.Button, down bool) { s.input.Set(button, down) }
+func (s *Session) SetInput(button gb.Button, down bool) {
+	if s.gba != nil {
+		s.gba.SetButton(button, down)
+		return
+	}
+	s.input.Set(button, down)
+}
 
 // ClearInput releases every button.
-func (s *Session) ClearInput() { s.input.Clear() }
+func (s *Session) ClearInput() {
+	if s.gba != nil {
+		s.gba.ReleaseAll()
+		return
+	}
+	s.input.Clear()
+}
 
 // --- agent / config ----------------------------------------------------------
 
 // SetAuto switches agent control on/off. Turning it off releases agent-held
-// buttons and hands control back to manual input.
+// buttons and hands control back to manual input. No-op for consoles without
+// an agent plugin (gba).
 func (s *Session) SetAuto(v bool) {
+	if s.gba != nil || s.agent == nil {
+		return
+	}
 	s.auto.Store(v)
 	if !v {
 		s.input.Clear()
@@ -223,16 +346,33 @@ func (s *Session) SetAuto(v bool) {
 }
 
 // Auto reports whether the agent controls the game.
-func (s *Session) Auto() bool { return s.auto.Load() }
+func (s *Session) Auto() bool {
+	if s.gba != nil || s.agent == nil {
+		return false
+	}
+	return s.auto.Load()
+}
 
 // SetMode switches the agent decision layer.
-func (s *Session) SetMode(m agent.Mode) { s.agent.SetMode(m) }
+func (s *Session) SetMode(m agent.Mode) {
+	if s.agent != nil {
+		s.agent.SetMode(m)
+	}
+}
 
 // Mode returns the current agent decision layer.
-func (s *Session) Mode() agent.Mode { return s.agent.Mode() }
+func (s *Session) Mode() agent.Mode {
+	if s.agent == nil {
+		return agent.ModeManual
+	}
+	return s.agent.Mode()
+}
 
-// SetPalette switches the DMG palette by name.
+// SetPalette switches the DMG palette by name (no-op for gba).
 func (s *Session) SetPalette(name string) error {
+	if s.gba != nil {
+		return nil
+	}
 	idx, err := PaletteIndex(name)
 	if err != nil {
 		return err
@@ -243,28 +383,63 @@ func (s *Session) SetPalette(name string) error {
 
 // --- accessors ---------------------------------------------------------------
 
-// Gameboy returns the underlying emulator.
+// Gameboy returns the underlying emulator (nil for gba).
 func (s *Session) Gameboy() *gb.Gameboy { return s.gb }
 
-// Agent returns the decision agent.
+// Agent returns the decision agent (nil for gba).
 func (s *Session) Agent() *agent.Agent { return s.agent }
 
+// Console returns the active console kind ("gb" or "gba").
+func (s *Session) Console() string { return s.console }
+
+// Width returns the active screen width.
+func (s *Session) Width() int {
+	if s.gba != nil {
+		return gba.Width
+	}
+	return gb.ScreenWidth
+}
+
+// Height returns the active screen height.
+func (s *Session) Height() int {
+	if s.gba != nil {
+		return gba.Height
+	}
+	return gb.ScreenHeight
+}
+
 // CartName returns the loaded cartridge name.
-func (s *Session) CartName() string { return s.gb.GetLoadedCart().GetName() }
+func (s *Session) CartName() string {
+	if s.gba != nil {
+		return s.gba.CartName()
+	}
+	return s.gb.GetLoadedCart().GetName()
+}
 
 // FrameNumber returns the number of frames emulated so far.
-func (s *Session) FrameNumber() uint64 { return s.gb.FrameNumber() }
+func (s *Session) FrameNumber() uint64 {
+	if s.gba != nil {
+		return s.gba.FrameCount()
+	}
+	return s.gb.FrameNumber()
+}
 
 // Status returns a health/overview snapshot suitable for healthz / the UI.
 func (s *Session) Status() map[string]any {
-	return map[string]any{
-		"cart":   s.CartName(),
-		"frames": s.gb.FrameNumber(),
-		"auto":   s.auto.Load(),
-		"paused": s.gb.IsPaused(),
-		"mode":   string(s.agent.Mode()),
-		"stats":  s.agent.Status(),
+	out := map[string]any{
+		"console": s.console,
+		"cart":    s.CartName(),
+		"frames":  s.FrameNumber(),
+		"width":   s.Width(),
+		"height":  s.Height(),
+		"auto":    s.Auto(),
+		"paused":  s.IsPaused(),
+		"mode":    string(s.Mode()),
 	}
+	if s.agent != nil {
+		out["stats"] = s.agent.Status()
+	}
+	return out
 }
 
 // defaultLogf is used when Config.Logf is nil.

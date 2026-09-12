@@ -47,6 +47,10 @@ const KEYMAP = {
   X: "B",
   Enter: "Start",
   Backspace: "Select",
+  q: "L",
+  Q: "L",
+  w: "R",
+  W: "R",
 };
 
 let ws = null;
@@ -89,7 +93,8 @@ function connect() {
     switch (msg.type) {
       case "hello":
         el.cart.textContent = msg.cart || "-";
-        log("info", `已连接，ROM: ${msg.cart || "-"} fps=${msg.fps}`);
+        applyScreenSize(msg.width, msg.height);
+        log("info", `已连接，ROM: ${msg.cart || "-"} console=${msg.console || "gb"} fps=${msg.fps}`);
         break;
       case "frame":
         drawFrame(msg.img, msg.tick);
@@ -117,7 +122,7 @@ function drawFrame(imgBase64, tick) {
   const img = new Image();
   img.onload = () => {
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(img, 0, 0, 160, 144);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   };
   img.src = "data:image/png;base64," + imgBase64;
 
@@ -128,6 +133,15 @@ function drawFrame(imgBase64, tick) {
   }
   lastFrameAt = now;
   lastTick = tick;
+}
+
+function applyScreenSize(w, h) {
+  if (!w || !h) return;
+  canvas.width = w;
+  canvas.height = h;
+  const scale = Math.max(1, Math.floor(576 / h));
+  canvas.style.width = w * scale + "px";
+  canvas.style.height = h * scale + "px";
 }
 
 function updateState(s) {

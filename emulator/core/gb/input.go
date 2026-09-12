@@ -21,6 +21,11 @@ const (
 	// ButtonDown is the down dpad direction on the GameBoy.
 	ButtonDown = 7
 
+	// ButtonL and ButtonR are the shoulder buttons found on later consoles
+	// (e.g. Game Boy Advance). They are not physical DMG buttons.
+	ButtonL = 18
+	ButtonR = 19
+
 	ButtonPause               = 8
 	ButtonChangePallete       = 9
 	ButtonToggleBackground    = 10

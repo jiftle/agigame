@@ -4,17 +4,21 @@ import type { ApiResult } from './types';
 
 export interface EmuSessionInfo {
   id: string;
+  console: string;
   cart: string;
   game: string;
   mode: string;
   auto: boolean;
   paused: boolean;
   frames: number;
+  width: number;
+  height: number;
   createdAt: string;
 }
 
 export interface EmuStartInput {
   rom?: string;
+  console?: string;
   game?: string;
   mode?: string;
   palette?: string;

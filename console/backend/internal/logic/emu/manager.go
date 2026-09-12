@@ -68,7 +68,11 @@ func (m *sEmu) List(ctx context.Context) []*model.EmuSessionInfo {
 }
 
 func (m *sEmu) Start(ctx context.Context, in *model.EmuStartInput) (*model.EmuSessionInfo, error) {
-	romPath, err := resolveROM(ctx, in.Rom)
+	console := in.Console
+	if console == "" {
+		console = "gb"
+	}
+	romPath, err := resolveROM(ctx, console, in.Rom)
 	if err != nil {
 		return nil, err
 	}
@@ -98,6 +102,7 @@ func (m *sEmu) Start(ctx context.Context, in *model.EmuStartInput) (*model.EmuSe
 
 	eng, err := engine.New(engine.Config{
 		ROM:           romPath,
+		Console:       console,
 		Game:          game,
 		Palette:       palette,
 		FrameSkip:     frameSkip,
@@ -124,7 +129,7 @@ func (m *sEmu) Start(ctx context.Context, in *model.EmuStartInput) (*model.EmuSe
 	m.sessions[id] = sess
 	m.mu.Unlock()
 
-	g.Log().Infof(ctx, "emu session started id=%s rom=%s game=%s mode=%s", id, romPath, game, mode)
+	g.Log().Infof(ctx, "emu session started id=%s console=%s rom=%s game=%s mode=%s", id, console, romPath, game, mode)
 	return sess.info(), nil
 }
 
@@ -233,12 +238,15 @@ func (m *sEmu) get(id string) (*session, error) {
 func (s *session) info() *model.EmuSessionInfo {
 	return &model.EmuSessionInfo{
 		Id:        s.id,
+		Console:   s.engine.Console(),
 		Cart:      s.engine.CartName(),
 		Game:      s.game,
 		Mode:      string(s.engine.Mode()),
 		Auto:      s.engine.Auto(),
 		Paused:    s.engine.IsPaused(),
 		Frames:    s.engine.FrameNumber(),
+		Width:     s.engine.Width(),
+		Height:    s.engine.Height(),
 		CreatedAt: s.createdAt.Format("2006-01-02 15:04:05"),
 	}
 }
@@ -331,9 +339,13 @@ func (s *session) broadcast(data []byte) {
 }
 
 // resolveROM 把请求里的 ROM 名解析为绝对/相对路径，限制在 romDir 内。
-func resolveROM(ctx context.Context, name string) (string, error) {
+func resolveROM(ctx context.Context, console, name string) (string, error) {
 	if name == "" {
-		name = g.Cfg().MustGet(ctx, "emulator.defaultRom", "").String()
+		key := "emulator.defaultRom"
+		if console == "gba" {
+			key = "emulator.defaultGbaRom"
+		}
+		name = g.Cfg().MustGet(ctx, key, "").String()
 	}
 	if name == "" {
 		return "", errcode.BadRequest("未指定 ROM")

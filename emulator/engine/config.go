@@ -10,6 +10,7 @@ import (
 // Defaults applied when the corresponding Config field is zero.
 const (
 	DefaultGame          = "sml"
+	DefaultConsole       = "gb" // gb | gba
 	DefaultFrameSkip     = 4
 	DefaultStateInterval = 5
 )
@@ -18,7 +19,10 @@ const (
 type Config struct {
 	// ROM is the path to a legally owned GameBoy ROM dump.
 	ROM string
+	// Console selects the emulated handheld: "gb" (default) or "gba".
+	Console string
 	// Game is the game plugin id, e.g. "sml". Empty defaults to DefaultGame.
+	// Ignored for consoles without an agent plugin (gba).
 	Game string
 	// Palette is one of greyscale | original | bgb. Empty defaults to greyscale.
 	Palette string
@@ -36,6 +40,9 @@ type Config struct {
 }
 
 func (c *Config) normalize() {
+	if c.Console == "" {
+		c.Console = DefaultConsole
+	}
 	if c.Game == "" {
 		c.Game = DefaultGame
 	}

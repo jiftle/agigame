@@ -41,6 +41,7 @@ system:
 # 模拟器配置（引擎来自 agigame/emulator/engine）
 emulator:
   romDir: "../../roms"              # ROM 目录（相对 backend 工作目录）
-  defaultRom: "super-mario-land.gb" # 未显式指定时使用的 ROM
+  defaultRom: "super-mario-land.gb" # GB 默认 ROM
+  defaultGbaRom: ""                 # GBA 默认 ROM（可选，如 "game.gba"）
   palette: "greyscale"              # greyscale | original | bgb
   frameSkip: 4                      # 每 N 帧推一帧到前端

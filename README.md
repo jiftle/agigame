@@ -111,6 +111,17 @@ make dev-console         # 仅启动控制台（后端 :8000 / 前端 :8001）�
 
 控制台 ROM 目录由 `console/backend/manifest/config/config.yaml` 的 `emulator.romDir` 配置（默认 `../../roms`）。
 
+## GBA 支持
+
+除 DMG/CGB（GoBoy 核心）外，已支持 **Game Boy Advance**：
+
+- 核心：[`aabalke/guac`](https://github.com/aabalke/guac) 的 `emu/gba`（纯 Go，BSD-3-Clause），适配层在 `emulator/gba/`，**无头运行**（无需窗口/BIOS/音频设备）。
+- 启动：控制台「启动会话」里平台选 **Game Boy Advance**，ROM 填 `.gba` 文件名；Web 版则把 `web/config.yaml` 的 `emulator.console` 设为 `gba` 并把 `rom` 指向 `.gba`。
+- 按键：A/B/Start/Select/方向键 + **Q=L、W=R**。
+- 首期范围为「能玩」（画面/输入/控制台/WS）；**Agent（规则/LLM）暂只支持 GB**，GBA 会话忽略 auto/mode。
+
+> 注：guac 会引入 ebiten 等依赖（已在根 module）。GBA 及其 ROM 仅支持自有合法 dump。
+
 ## 一键命令
 
 ```bash

@@ -21,9 +21,12 @@ type FrameMsg struct {
 // StateMsg carries a snapshot of the emulator state. In auto mode the Agent
 // field carries the agent's live extract/reward summary.
 type StateMsg struct {
-	Type  string   `json:"type"`
-	State gb.State `json:"state"`
-	Agent any      `json:"agent,omitempty"`
+	Type    string   `json:"type"`
+	State   gb.State `json:"state"`
+	Agent   any      `json:"agent,omitempty"`
+	Console string   `json:"console,omitempty"`
+	Width   int      `json:"width,omitempty"`
+	Height  int      `json:"height,omitempty"`
 }
 
 // LogMsg is a server log entry shown in the UI log panel.
@@ -35,10 +38,13 @@ type LogMsg struct {
 
 // HelloMsg is the first message sent after a client connects.
 type HelloMsg struct {
-	Type string `json:"type"`
-	Cart string `json:"cart"`
-	FPS  int    `json:"fps"`
-	Game string `json:"game"`
+	Type    string `json:"type"`
+	Cart    string `json:"cart"`
+	FPS     int    `json:"fps"`
+	Game    string `json:"game"`
+	Console string `json:"console,omitempty"`
+	Width   int    `json:"width,omitempty"`
+	Height  int    `json:"height,omitempty"`
 }
 
 // Client → Server -------------------------------------------------------------

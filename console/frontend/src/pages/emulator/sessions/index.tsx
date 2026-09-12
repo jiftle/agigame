@@ -17,6 +17,7 @@ export default function EmulatorSessionsPage() {
 
   const columns: ProColumns<EmuSessionInfo>[] = [
     { title: '会话ID', dataIndex: 'id', width: 120, search: false },
+    { title: '平台', dataIndex: 'console', width: 70, search: false },
     { title: '卡带', dataIndex: 'cart', search: false },
     { title: '游戏', dataIndex: 'game', width: 80, search: false },
     { title: '模式', dataIndex: 'mode', width: 100, search: false },
@@ -80,7 +81,7 @@ export default function EmulatorSessionsPage() {
               title="启动模拟器会话"
               trigger={<Button type="primary">启动会话</Button>}
               modalProps={{ destroyOnClose: true }}
-              initialValues={{ game: 'sml', mode: 'rules', palette: 'greyscale' }}
+              initialValues={{ console: 'gb', game: 'sml', mode: 'rules', palette: 'greyscale' }}
               onFinish={async (values) => {
                 const session = await startSession(values);
                 message.success(`会话已启动：${session.id}`);
@@ -89,10 +90,18 @@ export default function EmulatorSessionsPage() {
                 return true;
               }}
             >
+              <ProFormSelect
+                name="console"
+                label="平台"
+                options={[
+                  { label: 'Game Boy / GBC', value: 'gb' },
+                  { label: 'Game Boy Advance', value: 'gba' },
+                ]}
+              />
               <ProFormText
                 name="rom"
                 label="ROM 文件名"
-                tooltip="留空使用服务端默认 ROM；相对 emulator.romDir"
+                tooltip="留空使用服务端默认 ROM；相对 emulator.romDir。GBA 填 .gba 文件"
                 placeholder="super-mario-land.gb"
               />
               <ProFormSelect

@@ -19,6 +19,10 @@ const KEYMAP: Record<string, string> = {
   X: 'B',
   Enter: 'Start',
   Backspace: 'Select',
+  q: 'L',
+  Q: 'L',
+  w: 'R',
+  W: 'R',
 };
 
 export default function EmulatorSessionDetailPage() {
@@ -29,6 +33,7 @@ export default function EmulatorSessionDetailPage() {
   const heldRef = useRef<Set<string>>(new Set());
 
   const [info, setInfo] = useState<EmuSessionInfo | null>(null);
+  const [screen, setScreen] = useState<{ w: number; h: number }>({ w: 160, h: 144 });
   const [auto, setAuto] = useState(false);
   const [mode, setMode] = useState('rules');
   const [palette, setPalette] = useState('greyscale');
@@ -59,6 +64,7 @@ export default function EmulatorSessionDetailPage() {
         setAuto(s.auto);
         setMode(s.mode);
         setPaused(s.paused);
+        if (s.width && s.height) setScreen({ w: s.width, h: s.height });
       })
       .catch(() => undefined);
   }, [id]);
@@ -134,12 +140,13 @@ export default function EmulatorSessionDetailPage() {
         <Card title="画面" styles={{ body: { padding: 12 } }}>
           <canvas
             ref={canvasRef}
-            width={480}
-            height={432}
+            width={screen.w * 3}
+            height={screen.h * 3}
             style={{
               imageRendering: 'pixelated',
               background: '#000',
               border: '2px solid #222',
+              maxWidth: '100%',
             }}
           />
         </Card>
@@ -195,7 +202,7 @@ export default function EmulatorSessionDetailPage() {
                 </Button>
               </Space>
               <Typography.Text type="secondary">
-                手动模式按键：方向键 · Z=A · X=B · Enter=Start · Backspace=Select
+                手动模式按键：方向键 · Z=A · X=B · Enter=Start · Backspace=Select · Q=L · W=R
               </Typography.Text>
             </Space>
           </Card>

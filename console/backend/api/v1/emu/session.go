@@ -19,6 +19,7 @@ type SessionListRes struct {
 type SessionStartReq struct {
 	g.Meta  `path:"/emu/session/start" method:"post" tags:"模拟器" summary:"启动会话"`
 	Rom     string `json:"rom"`
+	Console string `json:"console"` // gb | gba
 	Game    string `json:"game"`
 	Mode    string `json:"mode"`
 	Palette string `json:"palette"`

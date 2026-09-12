@@ -41,6 +41,7 @@ type EmulatorConfig struct {
 	SavePath  string `yaml:"save_path"`
 	CGB       bool   `yaml:"cgb"`
 	Palette   string `yaml:"palette"` // greyscale | original | bgb
+	Console   string `yaml:"console"` // gb | gba
 }
 
 // DefaultConfig returns a configuration with sensible defaults.
@@ -58,6 +59,7 @@ func DefaultConfig() *Config {
 			FrameSkip: 4,
 			SavePath:  "./saves/",
 			Palette:   "greyscale",
+			Console:   "gb",
 		},
 		Agent: AgentConfig{
 			Mode:            "manual",

@@ -3,18 +3,22 @@ package model
 // EmuSessionInfo 是控制台里一个运行中模拟器会话的摘要。
 type EmuSessionInfo struct {
 	Id        string `json:"id"`
+	Console   string `json:"console"`
 	Cart      string `json:"cart"`
 	Game      string `json:"game"`
 	Mode      string `json:"mode"`
 	Auto      bool   `json:"auto"`
 	Paused    bool   `json:"paused"`
 	Frames    uint64 `json:"frames"`
+	Width     int    `json:"width"`
+	Height    int    `json:"height"`
 	CreatedAt string `json:"createdAt"`
 }
 
 // EmuStartInput 启动一个新的模拟器会话。
 type EmuStartInput struct {
 	Rom     string `json:"rom"`
+	Console string `json:"console"` // gb | gba
 	Game    string `json:"game"`
 	Mode    string `json:"mode"`
 	Palette string `json:"palette"`

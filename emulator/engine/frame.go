@@ -20,6 +20,10 @@ type StateUpdate struct {
 	State gb.State
 	Auto  bool
 	Agent map[string]any
+	// Console/Width/Height describe the active handheld (gb or gba).
+	Console string
+	Width   int
+	Height  int
 }
 
 // encodePNG converts an emulator frame buffer into a PNG-encoded image.
@@ -34,6 +38,21 @@ func encodePNG(frame *[gb.ScreenWidth][gb.ScreenHeight][3]uint8) []byte {
 			img.Pix[i+3] = 0xFF
 		}
 	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		return nil
+	}
+	return buf.Bytes()
+}
+
+// encodeRGBA converts an RGBA framebuffer (width*height*4 bytes, as produced by
+// the GBA core) into a PNG-encoded image.
+func encodeRGBA(pixels []byte, width, height int) []byte {
+	if len(pixels) < width*height*4 {
+		return nil
+	}
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
+	copy(img.Pix, pixels[:width*height*4])
 	var buf bytes.Buffer
 	if err := png.Encode(&buf, img); err != nil {
 		return nil

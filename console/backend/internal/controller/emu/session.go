@@ -37,6 +37,7 @@ func (c *cSession) Start(ctx context.Context, req *api.SessionStartReq) (res *ap
 	}
 	info, err := service.Emu().Start(ctx, &model.EmuStartInput{
 		Rom:     req.Rom,
+		Console: req.Console,
 		Game:    req.Game,
 		Mode:    req.Mode,
 		Palette: req.Palette,
