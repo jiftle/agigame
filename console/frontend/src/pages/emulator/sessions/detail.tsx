@@ -6,6 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { message } from '@/utils/antdApp';
 import { PcmPlayer } from '@/utils/pcmAudio';
 
+import VirtualGamepad from '@/components/VirtualGamepad';
 import { useEmulatorSocket, type FrameData } from '@/hooks/useEmulatorSocket';
 import { getSession, stopSession, type EmuSessionInfo } from '@/services/emulator';
 
@@ -105,7 +106,23 @@ export default function EmulatorSessionDetailPage() {
       .catch(() => undefined);
   }, [id]);
 
-  // 手动模式键盘输入
+  // 手动输入：键盘与虚拟手柄共用（去重 + 差量发送）。
+  const pressKey = (btn: string) => {
+    if (heldRef.current.has(btn)) return;
+    heldRef.current.add(btn);
+    socket.sendKeys([btn], []);
+  };
+  const releaseKey = (btn: string) => {
+    if (!heldRef.current.has(btn)) return;
+    heldRef.current.delete(btn);
+    socket.sendKeys([], [btn]);
+  };
+  const releaseAllKeys = () => {
+    heldRef.current.forEach((b) => socket.sendKeys([], [b]));
+    heldRef.current.clear();
+  };
+
+  // 键盘映射（Agent 自动时忽略）
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       const btn = KEYMAP[e.key];
@@ -113,17 +130,12 @@ export default function EmulatorSessionDetailPage() {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Backspace', ' '].includes(e.key)) {
         e.preventDefault();
       }
-      if (heldRef.current.has(btn)) return;
-      heldRef.current.add(btn);
-      socket.sendKeys([btn], []);
+      pressKey(btn);
     };
     const up = (e: KeyboardEvent) => {
       const btn = KEYMAP[e.key];
       if (!btn) return;
-      if (heldRef.current.has(btn)) {
-        heldRef.current.delete(btn);
-        socket.sendKeys([], [btn]);
-      }
+      releaseKey(btn);
     };
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
@@ -135,6 +147,7 @@ export default function EmulatorSessionDetailPage() {
   }, [socket.sendKeys]);
 
   const toggleAuto = (next: boolean) => {
+    if (next) releaseAllKeys();
     setAuto(next);
     socket.sendConfig({ auto: next, mode });
     message.info(next ? '已切换到 Agent 自动' : '已切换到手动');
@@ -186,6 +199,12 @@ export default function EmulatorSessionDetailPage() {
               border: '2px solid #222',
               maxWidth: '100%',
             }}
+          />
+          <VirtualGamepad
+            onPress={pressKey}
+            onRelease={releaseKey}
+            disabled={auto}
+            showShoulders={info?.console === 'gba' || screen.w === 240}
           />
         </Card>
 
@@ -251,7 +270,8 @@ export default function EmulatorSessionDetailPage() {
                 </Button>
               </Space>
               <Typography.Text type="secondary">
-                手动模式按键：方向键 · Z=A · X=B · Enter=Start · Backspace=Select · Q=L · W=R
+                手动模式按键：方向键 · Z=A · X=B · Enter=Start · Backspace=Select · Q=L · W=R；
+                也可直接用画面下方虚拟手柄（鼠标/触屏）
               </Typography.Text>
             </Space>
           </Card>
