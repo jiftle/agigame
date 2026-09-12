@@ -1,27 +1,27 @@
 # GoBoy-LLM
 
-AI 玩 Game Boy 实验平台。「GB 核心 + WebSocket 服务 + WebUI + Agent」四层架构。
+AI 玩 Game Boy 实验平台。仓库分三大块：**模拟器核心 / Web 模拟器前端 / 控制台**。
 
 ```
-┌─────────────────────────────────────────────────────┐
-│  Layer 5: WebUI  canvas + 状态面板 + 键盘 + 日志     │
-├─────────────────────────────────────────────────────┤
-│  Layer 4: Server   HTTP + WO 消息 / WS Hub / 静态文件 │
-├─────────────────────────────────────────────────────┤
-│  Layer 3: Agent   规则(高频) + LLM(低频) + Reward     │  ← P2/P3
-├─────────────────────────────────────────────────────┤
-│  Layer 2: core/gb CPU/PPU/APU/MMU/Cart + 回调注入     │
-├─────────────────────────────────────────────────────┤
-│  Layer 1: ROM     用户自有合法 dump                   │
-└─────────────────────────────────────────────────────┘
+agigame/
+├── emulator/           模拟器核心（纯 Go 引擎）
+│   ├── core/           CPU/PPU/APU/MMU/Cart + 回调注入
+│   ├── agent/          规则(高频) + LLM(低频) + Reward + games 插件
+│   └── engine/         传输无关会话层（Web 与控制台共用）
+├── web/                Web 模拟器前端（独立可玩）
+│   ├── server/         HTTP + WS Hub + 输入聚合 + 帧编码
+│   └── webui/          canvas 渲染 + 面板
+└── console/            控制台（AdminBase 改造适配，规划中）
+    ├── backend/        GoFrame v2
+    └── frontend/       React 19 + Ant Design
 ```
 
-当前进度：**P0（核心改造）+ P1（Web 可玩）+ P2/P3（Agent 空架子）已完成**。
+当前进度：**P0（核心改造）+ P1（Web 可玩）+ P2/P3（Agent 空架子）已完成**；目录已按三大块重构。
 
-- P0：`core/gb` 解耦出 `FrameCallback` / `StateCallback` / `InputProvider` / `SetPreFrameCallback`，主循环 `Run(ctx)/Step()`
-- P1：`server/`（HTTP + WS + Hub + 输入聚合）+ `webui/`（canvas 渲染 + 键盘 + 控制面板）
-- P2：`agent/games` 规则 Agent（Super Mario Land 地址表 + 状态提取 + 规则决策 + Reward + SafetyNet）
-- P3：`agent` LLM 决策层**空架子**：`LLMProvider` 接口 + `StubLLM`（不接真实 API）、异步 2Hz 决策循环、prompt 模板
+- P0：`emulator/core/gb` 解耦出 `FrameCallback` / `StateCallback` / `InputProvider` / `SetPreFrameCallback`，主循环 `Run(ctx)/Step()`
+- P1：`web/server`（HTTP + WS + Hub + 输入聚合）+ `web/webui`（canvas 渲染 + 键盘 + 控制面板）
+- P2：`emulator/agent/games` 规则 Agent（Super Mario Land 地址表 + 状态提取 + 规则决策 + Reward + SafetyNet）
+- P3：`emulator/agent` LLM 决策层**空架子**：`LLMProvider` 接口 + `StubLLM`（不接真实 API）、异步 2Hz 决策循环、prompt 模板
 - P4/P5：实验能力（SaveState / 批量 / reward 日志）与插件化（规划中）
 
 ## 快速开始
@@ -33,12 +33,12 @@ AI 玩 Game Boy 实验平台。「GB 核心 + WebSocket 服务 + WebUI + Agent�
    cp /path/to/Super_Mario_Land.gb roms/
    ```
 
-2. 修改 `config.yaml` 中的 `rom` 路径（默认 `./roms/super_mario_land.gb`）。
+2. 修改 `web/config.yaml` 中的 `rom` 路径（默认 `./roms/super-mario-land.gb`）。
 
-3. 运行：
+3. 运行（在仓库根目录执行）：
 
    ```bash
-   go run ./cmd/server -config config.yaml
+   go run ./web/cmd/server -config web/config.yaml
    # 浏览器打开 http://localhost:8080
    ```
 
@@ -85,24 +85,25 @@ Client → Server：
 ## 目录结构
 
 ```
-cmd/server         入口：装配各层、启动 loop
-core/gb            GameBoy 核心（GoBoy 源码改造：回调注入 + 运行循环 + 快照 + 帧前钩子）
-core/cart          MBC1/2/3/5、ROM、RAM+电池存档
-core/apu           无头 APU（保留寄存器语义，不产生音频）
-agent              决策层：模式切换 + 规则同步决策 + LLM 异步循环 + Reward/统计
-agent/games        游戏插件：GamePlugin 接口 + Super Mario Land（地址表/规则/prompt/reward）
-server             HTTP + WS Hub + 输入聚合 + 帧编码(JSON) + agent 装配
-webui              canvas 前端
-config.yaml        配置
+emulator/core/gb     GameBoy 核心（GoBoy 源码改造：回调注入 + 运行循环 + 快照 + 帧前钩子）
+emulator/core/cart   MBC1/2/3/5、ROM、RAM+电池存档
+emulator/core/apu    无头 APU（保留寄存器语义，不产生音频）
+emulator/agent       决策层：模式切换 + 规则同步决策 + LLM 异步循环 + Reward/统计
+emulator/agent/games 游戏插件：GamePlugin 接口 + Super Mario Land（地址表/规则/prompt/reward）
+web/server           HTTP + WS Hub + 输入聚合 + 帧编码(JSON) + agent 装配
+web/webui            canvas 前端
+web/cmd/server       入口：装配各层、启动 loop
+web/config.yaml      Web 模拟器配置
+roms/  saves/        ROM 与存档（gitignore）
 ```
 
 ## 设计要点
 
-- **核心零依赖**：`core/gb` 不依赖 UI/网络库；`core/apu` 为纯 Go 无头实现（无需 cgo）。
+- **核心零依赖**：`emulator/core/gb` 不依赖 UI/网络库；`emulator/core/apu` 为纯 Go 无头实现（无需 cgo）。
 - **回调注入**：渲染通过 `SetFrameCallback`，输入通过 `SetInputProvider`，快照通过 `SetStateCallback`，Agent 决策通过 `SetPreFrameCallback`（每帧、仿真 goroutine 上同步执行）。
 - **决策分层**：规则在 emu goroutine 每帧同步跑；LLM 在独立 goroutine 异步（2Hz）只操作最近一次状态副本，写入原子安全区，绝不阻塞精化。
 - **不阻塞精化**：帧回调在仿真 goroutine 上只做拷贝入队（最新帧优先），PNG 编码在独立 goroutine。
-- **SML 地址表**：集中在 `agent/games/super_mario_land.go`，参考 ROM Detectives / Data Crystal，注意偏移可能随 ROM 修订版本（v1.0 vs JUE 1.1）变化，异常时优先检查该表。
+- **SML 地址表**：集中在 `emulator/agent/games/super_mario_land.go`，参考 ROM Detectives / Data Crystal，注意偏移可能随 ROM 修订版本（v1.0 vs JUE 1.1）变化，异常时优先检查该表。
 - **只接受本地 ROM**：不做任何网络下载 / 分发。
 
 ## 测试
@@ -111,7 +112,7 @@ config.yaml        配置
 go test ./...
 ```
 
-- `core/gb/smoke_test.go`：无头跑帧、回调、输入 diff
-- `server/server_test.go`：HTTP 启动 + WS 收到 hello/frame/state 的端到端测试
-- `agent/*_test.go`：模式切换、按键 diff 应用、stub LLM 决策接入、SafetyNet 救援
-- `agent/games/*_test.go`：SML 地址提取（BCD 生命/时间、OAM 敌人扫描）、规则决策、Reward
+- `emulator/core/gb/smoke_test.go`：无头跑帧、回调、输入 diff
+- `web/server/server_test.go`：HTTP 启动 + WS 收到 hello/frame/state 的端到端测试
+- `emulator/agent/*_test.go`：模式切换、按键 diff 应用、stub LLM 决策接入、SafetyNet 救援
+- `emulator/agent/games/*_test.go`：SML 地址提取（BCD 生命/时间、OAM 敌人扫描）、规则决策、Reward

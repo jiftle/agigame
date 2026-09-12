@@ -10,7 +10,7 @@
 // ID maps to the "game" value in config.yaml.
 package games
 
-import "agigame/core/gb"
+import "agigame/emulator/core/gb"
 
 // GameReader gives a plugin everything it needs to read the current game
 // state. It is implemented by *gb.Gameboy and only read on the emulator

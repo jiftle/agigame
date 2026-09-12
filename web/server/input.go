@@ -3,7 +3,7 @@ package server
 import (
 	"sync"
 
-	"agigame/core/gb"
+	"agigame/emulator/core/gb"
 )
 
 // InputState aggregates button state from any number of producers (manual

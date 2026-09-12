@@ -6,8 +6,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"agigame/core/apu"
-	"agigame/core/cart"
+	"agigame/emulator/core/apu"
+	"agigame/emulator/core/cart"
 )
 
 const (

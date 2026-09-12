@@ -12,7 +12,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"agigame/core/gb"
+	"agigame/emulator/core/gb"
 )
 
 // makeSmokeROM builds a minimal valid DMG ROM (NOP loop) in memory.

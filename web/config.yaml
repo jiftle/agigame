@@ -16,4 +16,4 @@ agent:
   api_key_env: OPENAI_API_KEY # 预留：真实 LLM 的 API 密钥环境变量名
   rules_first: true
 game: sml                # 游戏插件 id（P2 起生效）
-webui: ./webui
+webui: ./web/webui

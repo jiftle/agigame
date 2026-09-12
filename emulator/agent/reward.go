@@ -3,7 +3,7 @@ package agent
 import (
 	"sync"
 
-	"agigame/agent/games"
+	"agigame/emulator/agent/games"
 )
 
 // Stats aggregates reward signals and notable events for a run. It is safe

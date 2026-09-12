@@ -3,7 +3,7 @@ package games
 import (
 	"testing"
 
-	"agigame/core/gb"
+	"agigame/emulator/core/gb"
 )
 
 // fakeMem is a scripted GameReader for pure-logic tests.

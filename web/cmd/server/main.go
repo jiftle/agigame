@@ -11,11 +11,11 @@ import (
 	"syscall"
 	"time"
 
-	"agigame/server"
+	"agigame/web/server"
 )
 
 func main() {
-	configPath := flag.String("config", "config.yaml", "path to config.yaml")
+	configPath := flag.String("config", "web/config.yaml", "path to config.yaml")
 	flag.Parse()
 
 	cfg, err := server.LoadConfig(*configPath)

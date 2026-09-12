@@ -16,8 +16,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"agigame/agent/games"
-	"agigame/core/gb"
+	"agigame/emulator/agent/games"
+	"agigame/emulator/core/gb"
 )
 
 // Mode selects which decision layer drives the buttons.

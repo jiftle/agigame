@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"agigame/core/cart"
+	"agigame/emulator/core/cart"
 )
 
 const (

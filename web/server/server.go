@@ -14,9 +14,9 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"agigame/agent"
-	"agigame/agent/games"
-	"agigame/core/gb"
+	"agigame/emulator/agent"
+	"agigame/emulator/agent/games"
+	"agigame/emulator/core/gb"
 )
 
 // framePush carries a rendered frame added to the encode queue with its tick.

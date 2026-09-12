@@ -47,7 +47,7 @@ type EmulatorConfig struct {
 func DefaultConfig() *Config {
 	return &Config{
 		ROM:   "./roms/super_mario_land.gb",
-		WebUI: "./webui",
+		WebUI: "./web/webui",
 		Game:  "sml",
 		Server: ServerConfig{
 			Host: "0.0.0.0",

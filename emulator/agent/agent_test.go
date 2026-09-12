@@ -5,8 +5,8 @@ import (
 	"sync"
 	"testing"
 
-	"agigame/agent/games"
-	"agigame/core/gb"
+	"agigame/emulator/agent/games"
+	"agigame/emulator/core/gb"
 )
 
 // --- fakes ----------------------------------------------------------------

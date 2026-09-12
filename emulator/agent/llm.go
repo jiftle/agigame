@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"agigame/agent/games"
-	"agigame/core/gb"
+	"agigame/emulator/agent/games"
+	"agigame/emulator/core/gb"
 )
 
 // LLMDecision is the parsed output of an LLM provider.

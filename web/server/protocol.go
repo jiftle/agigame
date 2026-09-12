@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"agigame/core/gb"
+	"agigame/emulator/core/gb"
 )
 
 // WebSocket message protocol between server and the web UI / agent clients.

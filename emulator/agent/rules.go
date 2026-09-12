@@ -1,6 +1,6 @@
 package agent
 
-import "agigame/agent/games"
+import "agigame/emulator/agent/games"
 
 // SafetyNet is a fallback that kicks in when the active decision layer stops
 // making progress (stuck in a wall, corner, or softlock). It forces forward

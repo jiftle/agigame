@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"agigame/agent/games"
+	"agigame/emulator/agent/games"
 )
 
 // BuildGamePrompt renders the state through the plugin and wraps it with the
