@@ -1,0 +1,9 @@
+bin/
+/main
+/server
+data/
+logs/
+*.db
+*.db-journal
+*.db-wal
+.env

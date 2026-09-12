@@ -1,0 +1,39 @@
+# AdminBase 后端配置
+
+server:
+  address: ":8000"
+  serverRoot: "resource/public"
+  dumpRouterMap: true
+  routeOverWrite: true
+  openapiPath: "/api.json"
+  swaggerPath: "/swagger"
+  logPath: "logs/server"
+  errorLogEnabled: true
+  accessLogEnabled: false
+
+logger:
+  path: "logs/logger"
+  level: "all"
+  stdout: true
+
+database:
+  default:
+    type: "sqlite"
+    link: "sqlite::@file(./data/agigame-console.db)"
+    debug: false
+    createdAt: "created_at"
+    updatedAt: "updated_at"
+    deletedAt: "deleted_at"
+
+# 认证配置
+jwt:
+  secret: "agigame-console-jwt-secret-please-change-in-production"
+  expire: 86400        # access token 有效期（秒），默认 1 天
+  refreshExpire: 604800 # refresh token 有效期（秒），默认 7 天
+  header: "Authorization"
+  prefix: "Bearer "
+
+# 系统配置
+system:
+  defaultPassword: "123456" # 重置密码默认值
+  superAdminId: 1           # 超级管理员用户ID

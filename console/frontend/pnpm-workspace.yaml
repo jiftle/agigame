@@ -1,0 +1,11 @@
+allowBuilds:
+  core-js: true
+  core-js-pure: true
+  es5-ext: true
+  esbuild: true
+onlyBuiltDependencies:
+  - '@biomejs/biome'
+  - core-js
+  - core-js-pure
+  - es5-ext
+  - esbuild
