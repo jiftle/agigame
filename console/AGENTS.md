@@ -7,14 +7,14 @@ AdminBase：GoFrame v2 后端 + Vite/React 前端的后台管理基座，前后�
 - `backend/`：Go 模块，**module 名是 `agigame/console/backend`**。新增 Go 文件的 import 必须写 `agigame/console/backend/...`。
 - `frontend/`：Vite + React 19 + antd 6 + pro-components + react-router-dom + TanStack Query + Zustand；**已彻底移除 Umi**。
 - 后端入口 `backend/main.go` → `internal/cmd`（先建库、再注册路由）。
-- 表结构定义在 `backend/manifest/sql/init.sql`；运行数据 `backend/data/adminbase.db`（gitignored）。
+- 表结构定义在 `backend/manifest/sql/init.sql`；运行数据 `backend/data/agigame-console.db`（gitignored）。
 
 ## 常用命令
 
 - 一键起前后端：根目录 `make dev`（后端 :8000、前端 :8001；`gf` 已装则热重载，否则 `go run .`）。
 - 后端验证：`cd backend && go vet ./... && go build ./...`（无测试框架、无 golangci）。
 - 前端验证：`cd frontend && pnpm tsc && pnpm build`（`build` 已含 `tsc --noEmit`）。
-- 依赖安装：`make install`；重置数据库：`make db-reset`（删 `data/adminbase.db` 后按 init.sql 重建）。
+- 依赖安装：`make install`；重置数据库：`make db-reset`（删 `data/agigame-console.db` 后按 init.sql 重建）。
 - 默认账号 `admin` / `123456`。
 
 ## 后端约定（易漏）
@@ -43,6 +43,6 @@ AdminBase：GoFrame v2 后端 + Vite/React 前端的后台管理基座，前后�
 
 ## 其它
 
-- JWT 密钥可用环境变量 `ADMINBASE_JWT_SECRET` 覆盖（优先于 config.yaml）。
+- JWT 密钥可用环境变量 `AGIGAME_CONSOLE_JWT_SECRET` 覆盖（优先于 config.yaml）。
 - 生成物/运行数据已 gitignore，勿提交：`frontend/dist`、`frontend/src/.umi*`、`backend/data`、`backend/logs`、`backend/main`、`backend/bin`。
 - 前端无 ESLint/Prettier，类型正确性由 `tsc` 保证。

@@ -35,10 +35,10 @@ var (
 )
 
 func secret(ctx context.Context) []byte {
-	if s := os.Getenv("ADMINBASE_JWT_SECRET"); s != "" {
+	if s := os.Getenv("AGIGAME_CONSOLE_JWT_SECRET"); s != "" {
 		return []byte(s)
 	}
-	return []byte(g.Cfg().MustGet(ctx, "jwt.secret", "adminbase-default-secret").String())
+	return []byte(g.Cfg().MustGet(ctx, "jwt.secret", "agigame-console-default-secret").String())
 }
 
 // Generate 生成 token
@@ -52,7 +52,7 @@ func Generate(ctx context.Context, userId int, username, tokenType string, expir
 			ID:        grand.S(32),
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(expire)),
-			Issuer:    "adminbase",
+			Issuer:    "agigame-console",
 		},
 	}
 	return jwt.NewWithClaims(SignMethod, claims).SignedString(secret(ctx))

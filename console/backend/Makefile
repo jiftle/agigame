@@ -1,6 +1,6 @@
 .PHONY: run dev build tidy gen-dao db-init db-reset clean
 
-BIN := bin/adminbase
+BIN := bin/console
 GF  := $(shell command -v gf 2>/dev/null)
 
 # 普通运行
@@ -30,11 +30,11 @@ gen-dao:
 # 初始化 SQLite 数据库与种子数据 (需要 sqlite3 命令)
 db-init:
 	@mkdir -p data
-	sqlite3 data/adminbase.db < manifest/sql/init.sql
-	@echo "database initialized at data/adminbase.db"
+	sqlite3 data/agigame-console.db < manifest/sql/init.sql
+	@echo "database initialized at data/agigame-console.db"
 
 db-reset:
-	rm -f data/adminbase.db
+	rm -f data/agigame-console.db
 	$(MAKE) db-init
 
 clean:

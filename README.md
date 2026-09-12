@@ -95,7 +95,29 @@ web/server           engine 的 HTTP/WS 适配器（Hub + 协议 + 静态文件�
 web/webui            canvas 前端
 web/cmd/server       入口：装配各层、启动 loop
 web/config.yaml      Web 模拟器配置
+console/backend      控制台后端（GoFrame v2，独立 module，import emulator/engine）
+console/frontend     控制台前端（React 19 + Ant Design）
 roms/  saves/        ROM 与存档（gitignore）
+```
+
+## 控制台
+
+控制台基于 AdminBase 改造适配（`console/`），提供登录/RBAC/日志，并新增「模拟器」会话管理：列表、启动、实时画面（WS）、Agent 面板、控制与调色板切换。后端通过 `replace agigame => ../..` 引用 `emulator/engine`。
+
+```bash
+make console-install     # 安装控制台前端依赖
+make console-dev         # 启动控制台（后端 :8000 / 前端 :8001），默认 admin/123456
+```
+
+控制台 ROM 目录由 `console/backend/manifest/config/config.yaml` 的 `emulator.romDir` 配置（默认 `../../roms`）。
+
+## 一键命令
+
+```bash
+make build   # 构建 Web 服务 + 控制台后端
+make test    # 引擎与服务测试
+make check   # gofmt 校验 + vet + test + 控制台构建
+make web-dev # 启动 Web 模拟器（:8080）
 ```
 
 ## 设计要点
