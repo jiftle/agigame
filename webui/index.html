@@ -25,66 +25,68 @@
     </section>
 
     <aside id="panels">
-      <section class="panel">
-        <h2>控制</h2>
-        <div class="row">
-          <button id="btnAuto" class="primary">Auto</button>
-          <select id="selMode" title="Agent 决策层">
-            <option value="rules">规则</option>
-            <option value="hybrid">混合</option>
-            <option value="llm">LLM</option>
-            <option value="manual">手动</option>
-          </select>
-        </div>
-        <div class="row">
-          <label for="selPalette">调色板</label>
-          <select id="selPalette">
-            <option value="greyscale">灰阶</option>
-            <option value="original">经典绿</option>
-            <option value="bgb">BGB 绿</option>
-          </select>
-        </div>
-        <div class="row">
-          <button id="btnReset">Reset</button>
-          <button id="btnPause">Pause</button>
-        </div>
-        <p class="hint">
-          手动模式按键：<br />
-          ↑↓←→ 方向键 &nbsp;·&nbsp; Z = A &nbsp;·&nbsp; X = B<br />
-          Enter = Start &nbsp;·&nbsp; Backspace = Select
-        </p>
-      </section>
+      <div id="panelsLeft">
+        <section class="panel">
+          <h2>控制</h2>
+          <div class="row">
+            <button id="btnAuto" class="primary">Auto</button>
+            <select id="selMode" title="Agent 决策层">
+              <option value="rules">规则</option>
+              <option value="hybrid">混合</option>
+              <option value="llm">LLM</option>
+              <option value="manual">手动</option>
+            </select>
+          </div>
+          <div class="row">
+            <label for="selPalette">调色板</label>
+            <select id="selPalette">
+              <option value="greyscale">灰阶</option>
+              <option value="original">经典绿</option>
+              <option value="bgb">BGB 绿</option>
+            </select>
+          </div>
+          <div class="row">
+            <button id="btnReset">Reset</button>
+            <button id="btnPause">Pause</button>
+          </div>
+          <p class="hint">
+            手动模式按键：<br />
+            ↑↓←→ 方向键 &nbsp;·&nbsp; Z = A &nbsp;·&nbsp; X = B<br />
+            Enter = Start &nbsp;·&nbsp; Backspace = Select
+          </p>
+        </section>
 
-      <section class="panel">
-        <h2>Agent</h2>
-        <table id="agentTable">
-          <tr><td>模式</td><td id="aMode">-</td></tr>
-          <tr><td>进度(camera)</td><td id="aProgress">-</td></tr>
-          <tr><td>生命</td><td id="aLives">-</td></tr>
-          <tr><td>金币</td><td id="aCoins">-</td></tr>
-          <tr><td>状态</td><td id="aState">-</td></tr>
-          <tr><td>敌人距离</td><td id="aEnemy">-</td></tr>
-          <tr><td>死亡</td><td id="aDeaths">-</td></tr>
-          <tr><td>奖励累计</td><td id="aReward">-</td></tr>
-          <tr><td>LLM 决策</td><td id="aDecision">-</td></tr>
-        </table>
-      </section>
+        <section class="panel">
+          <h2>Agent</h2>
+          <table id="agentTable">
+            <tr><td>模式</td><td id="aMode">-</td></tr>
+            <tr><td>进度(camera)</td><td id="aProgress">-</td></tr>
+            <tr><td>生命</td><td id="aLives">-</td></tr>
+            <tr><td>金币</td><td id="aCoins">-</td></tr>
+            <tr><td>状态</td><td id="aState">-</td></tr>
+            <tr><td>敌人距离</td><td id="aEnemy">-</td></tr>
+            <tr><td>死亡</td><td id="aDeaths">-</td></tr>
+            <tr><td>奖励累计</td><td id="aReward">-</td></tr>
+            <tr><td>LLM 决策</td><td id="aDecision">-</td></tr>
+          </table>
+        </section>
 
-      <section class="panel">
-        <h2>状态</h2>
-        <table id="stateTable">
-          <tr><td>帧</td><td id="sFrame">-</td></tr>
-          <tr><td>PC</td><td id="sPC">-</td></tr>
-          <tr><td>SP</td><td id="sSP">-</td></tr>
-          <tr><td>AF</td><td id="sAF">-</td></tr>
-          <tr><td>BC</td><td id="sBC">-</td></tr>
-          <tr><td>DE</td><td id="sDE">-</td></tr>
-          <tr><td>HL</td><td id="sHL">-</td></tr>
-          <tr><td>LY</td><td id="sLY">-</td></tr>
-          <tr><td>LCDC</td><td id="sLCDC">-</td></tr>
-          <tr><td>IF / IE</td><td id="sIFIE">-</td></tr>
-        </table>
-      </section>
+        <section class="panel">
+          <h2>状态</h2>
+          <table id="stateTable">
+            <tr><td>帧</td><td id="sFrame">-</td></tr>
+            <tr><td>PC</td><td id="sPC">-</td></tr>
+            <tr><td>SP</td><td id="sSP">-</td></tr>
+            <tr><td>AF</td><td id="sAF">-</td></tr>
+            <tr><td>BC</td><td id="sBC">-</td></tr>
+            <tr><td>DE</td><td id="sDE">-</td></tr>
+            <tr><td>HL</td><td id="sHL">-</td></tr>
+            <tr><td>LY</td><td id="sLY">-</td></tr>
+            <tr><td>LCDC</td><td id="sLCDC">-</td></tr>
+            <tr><td>IF / IE</td><td id="sIFIE">-</td></tr>
+          </table>
+        </section>
+      </div>
 
       <section class="panel log">
         <h2>日志</h2>
