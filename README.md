@@ -60,7 +60,7 @@ agigame/
 
 - **rules**：规则层每帧（emu goroutine）同步决策，SML 规则为「标题按 Start → 默认右行 → 敌人在 16px 内跳跃 → 空中保持右行」；`SafetyNet` 在无进度 120 帧后强制右行+脉冲跳跃脱困。
 - **hybrid**：紧急情况用规则，其余交给 LLM 决策；**llm**：纯用最近一次 LLM 决策。
-- 当前 LLM 一律是 `StubLLM`（模拟 30ms 延迟、返回 `["Right"]`），**不会调用任何外部 API**。P3 接真实 LLM 只需实现 `agent.LLMProvider` 并在 `server.New` 注入。
+- 当前 LLM 一律是 `StubLLM`（模拟 30ms 延迟、返回 `["Right"]`），**不会调用任何外部 API**。P3 接真实 LLM 只需实现 `agent.LLMProvider` 并在 `engine.Config.Agent.Provider` 注入。
 - Reward = camera 前进 +1、1UP +25、死亡 -50；统计（死亡/累计奖励/进度/最近决策）随 `state` 消息推送并在 WebUI 展示。
 
 ## WS 协议
@@ -89,8 +89,9 @@ emulator/core/gb     GameBoy 核心（GoBoy 源码改造：回调注入 + 运行
 emulator/core/cart   MBC1/2/3/5、ROM、RAM+电池存档
 emulator/core/apu    无头 APU（保留寄存器语义，不产生音频）
 emulator/agent       决策层：模式切换 + 规则同步决策 + LLM 异步循环 + Reward/统计
-emulator/agent/games 游戏插件：GamePlugin 接口 + Super Mario Land（地址表/规则/prompt/reward）
-web/server           HTTP + WS Hub + 输入聚合 + 帧编码(JSON) + agent 装配
+emulator/agent/games 游戏插件：GamePlugin 接口 + SML 实现 + 注册表(Register/Get)
+emulator/engine      传输无关会话层：生命周期 + 输入聚合 + 帧编码 + Agent 编排
+web/server           engine 的 HTTP/WS 适配器（Hub + 协议 + 静态文件）
 web/webui            canvas 前端
 web/cmd/server       入口：装配各层、启动 loop
 web/config.yaml      Web 模拟器配置

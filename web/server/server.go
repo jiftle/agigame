@@ -1,193 +1,94 @@
 package server
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"image"
-	"image/png"
 	"log"
 	"net/http"
-	"sync/atomic"
 
 	"github.com/gorilla/websocket"
 
 	"agigame/emulator/agent"
-	"agigame/emulator/agent/games"
 	"agigame/emulator/core/gb"
+	"agigame/emulator/engine"
 )
 
-// framePush carries a rendered frame added to the encode queue with its tick.
-type framePush struct {
-	data *[gb.ScreenWidth][gb.ScreenHeight][3]uint8
-	tick uint64
-}
-
-// Server is the GoBoy-LLM HTTP/WebSocket service. It owns the GameBoy, the
-// input aggregation, the client hub and the decision agent.
+// Server is the standalone Web emulator: an HTTP/WebSocket adapter on top of
+// an engine.Session. It owns the client hub; the emulator lifecycle, input
+// aggregation and agent all live in the session.
 type Server struct {
-	cfg *Config
-
-	gb        *gb.Gameboy
-	hub       *Hub
-	input     *InputState
-	agent     *agent.Agent
-	frames    chan framePush
-	frameSkip uint64
-
-	auto atomic.Bool // auto/manual switch
+	cfg     *Config
+	session *engine.Session
+	hub     *Hub
 
 	upgrader websocket.Upgrader
 }
 
-// New creates a Server, loading the configured ROM and building the agent for
-// the configured game plugin.
+// New creates a Server and loads the configured ROM into a new session.
 func New(cfg *Config) (*Server, error) {
-	var opts []gb.GameboyOption
-	if cfg.Emulator.CGB {
-		opts = append(opts, gb.WithCGBEnabled())
-	}
-	gameboy, err := gb.New(cfg.ROM, opts...)
-	if err != nil {
-		return nil, err
-	}
-
-	var plugin games.GamePlugin
-	switch cfg.Game {
-	case "sml", "":
-		plugin = &games.SMLPlugin{}
-	default:
-		return nil, fmt.Errorf("unknown game plugin %q", cfg.Game)
-	}
-
 	s := &Server{
-		cfg:       cfg,
-		gb:        gameboy,
-		hub:       NewHub(),
-		input:     NewInputState(),
-		frames:    make(chan framePush, 1),
-		frameSkip: uint64(cfg.Emulator.FrameSkip),
+		cfg: cfg,
+		hub: NewHub(),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool { return true },
 		},
 	}
-	if s.frameSkip == 0 {
-		s.frameSkip = 1
-	}
-	if idx, err := paletteIndex(cfg.Emulator.Palette); err == nil {
-		gb.SetDMGPalette(idx)
-	} else {
-		log.Printf("warn: %v (falling back to greyscale)", err)
-		gb.SetDMGPalette(gb.PaletteGreyscale)
-	}
 
-	// P3 skeleton: always the stub provider; swap in a real LLM via
-	// agent.Config.Provider when wiring up credentials.
-	s.agent = agent.New(agent.Config{
-		Mode:            agent.Mode(cfg.Agent.Mode),
-		LLMIntervalMs:   cfg.Agent.LLMIntervalMS,
-		SafetyNetFrames: cfg.Agent.SafetyNetFrames,
-		Provider:        &agent.StubLLM{},
-		Logf: func(format string, args ...any) {
-			s.logf("agent", format, args...)
+	session, err := engine.New(engine.Config{
+		ROM:           cfg.ROM,
+		Game:          cfg.Game,
+		Palette:       cfg.Emulator.Palette,
+		CGB:           cfg.Emulator.CGB,
+		FrameSkip:     cfg.Emulator.FrameSkip,
+		StateInterval: 5,
+		Agent: agent.Config{
+			Mode:            agent.Mode(cfg.Agent.Mode),
+			LLMIntervalMs:   cfg.Agent.LLMIntervalMS,
+			SafetyNetFrames: cfg.Agent.SafetyNetFrames,
 		},
-	}, plugin, s.input)
+		Logf: func(level, format string, args ...any) {
+			s.logf(level, format, args...)
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	s.session = session
 	return s, nil
 }
 
 // Gameboy returns the underlying emulator instance.
-func (s *Server) Gameboy() *gb.Gameboy {
-	return s.gb
-}
+func (s *Server) Gameboy() *gb.Gameboy { return s.session.Gameboy() }
 
-// Agent returns the decision agent (may be nil in future builds).
-func (s *Server) Agent() *agent.Agent {
-	return s.agent
-}
+// Agent returns the decision agent.
+func (s *Server) Agent() *agent.Agent { return s.session.Agent() }
 
-// Start launches the emulator loop, the agent LLM loop and the frame encoder.
-// It blocks until ctx is cancelled.
+// Session returns the underlying engine session.
+func (s *Server) Session() *engine.Session { return s.session }
+
+// Start wires the session callbacks and runs the emulation loop until ctx is
+// cancelled. It blocks.
 func (s *Server) Start(ctx context.Context) error {
-	s.logf("info", "loaded cart: %q", s.gb.GetLoadedCart().GetName())
-	s.gb.SetInputProvider(s.input)
-	s.gb.SetPreFrameCallback(s.onPreFrame)
-	s.gb.SetFrameCallback(s.onFrame)
-	s.gb.SetStateCallback(s.onState, 5)
-
-	go s.runEncoder(ctx)
-	go s.agent.StartLLM(ctx)
-
-	go func() {
-		s.logf("info", "emulation started")
-		s.gb.Run(ctx)
-		s.logf("info", "emulation stopped")
-	}()
-
-	<-ctx.Done()
-	return nil
+	s.session.SetFrameCallback(s.onFrame)
+	s.session.SetStateCallback(s.onState)
+	s.logf("info", "loaded cart: %q", s.session.CartName())
+	return s.session.Start(ctx)
 }
 
-// onPreFrame runs on the emulator goroutine before each frame advances. It
-// fires the decision agent once per frame when auto mode is on.
-func (s *Server) onPreFrame() {
-	if !s.auto.Load() {
-		return
-	}
-	if s.agent != nil {
-		s.agent.Tick(s.gb)
-	}
+// onFrame runs on the session encoder goroutine and broadcasts each frame.
+func (s *Server) onFrame(f engine.Frame) {
+	s.hub.BroadcastJSON(FrameMsg{
+		Type: "frame",
+		Img:  base64.StdEncoding.EncodeToString(f.PNG),
+		Tick: f.Tick,
+	})
 }
 
-// onFrame runs on the emulator goroutine. Frames requested by the UI are copied
-// and queued for the encoder (latest-wins, never blocks the emulator).
-func (s *Server) onFrame(frame *[gb.ScreenWidth][gb.ScreenHeight][3]uint8, tick uint64) {
-	if s.frameSkip == 0 || tick%s.frameSkip != 0 {
-		return
-	}
-	copy := *frame
-	push := framePush{data: &copy, tick: tick}
-	select {
-	case s.frames <- push:
-	default:
-		// Drop the queued frame in favour of the newest.
-		select {
-		case <-s.frames:
-		default:
-		}
-		select {
-		case s.frames <- push:
-		default:
-		}
-	}
-}
-
-// onState runs periodically on the emulator goroutine. In auto mode it
-// attaches the agent's latest extract / reward summary.
-func (s *Server) onState(state gb.State) {
-	msg := StateMsg{Type: "state", State: state}
-	if s.auto.Load() && s.agent != nil {
-		msg.Agent = s.agent.Status()
-	}
-	s.hub.BroadcastJSON(msg)
-}
-
-// runEncoder converts queued frames to PNG and broadcasts them.
-func (s *Server) runEncoder(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case push := <-s.frames:
-			img := encodePNG(push.data)
-			s.hub.BroadcastJSON(FrameMsg{
-				Type: "frame",
-				Img:  base64.StdEncoding.EncodeToString(img),
-				Tick: push.tick,
-			})
-		}
-	}
+// onState runs periodically on the emulator goroutine and broadcasts state.
+func (s *Server) onState(u engine.StateUpdate) {
+	s.hub.BroadcastJSON(StateMsg{Type: "state", State: u.State, Agent: u.Agent})
 }
 
 // handleWS upgrades and serves a websocket client connection.
@@ -201,7 +102,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	client := s.hub.Add(conn)
 	client.send <- mustJSON(HelloMsg{
 		Type: "hello",
-		Cart: s.gb.GetLoadedCart().GetName(),
+		Cart: s.session.CartName(),
 		FPS:  60,
 		Game: s.cfg.Game,
 	})
@@ -209,7 +110,7 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	client.readPump(s.handleClientMsg)
 }
 
-// handleClientMsg routes decoded client messages to the emulator or config.
+// handleClientMsg routes decoded client messages to the session or config.
 func (s *Server) handleClientMsg(data []byte) {
 	msg, err := decodeMessage(data)
 	if err != nil {
@@ -220,13 +121,13 @@ func (s *Server) handleClientMsg(data []byte) {
 	switch m := msg.(type) {
 	case *KeysMsg:
 		for _, name := range m.Pressed {
-			if b, err := parseButton(name); err == nil {
-				s.input.Press(b)
+			if b, err := engine.ParseButton(name); err == nil {
+				s.session.Press(b)
 			}
 		}
 		for _, name := range m.Released {
-			if b, err := parseButton(name); err == nil {
-				s.input.Release(b)
+			if b, err := engine.ParseButton(name); err == nil {
+				s.session.Release(b)
 			}
 		}
 
@@ -234,40 +135,28 @@ func (s *Server) handleClientMsg(data []byte) {
 		switch m.Action {
 		case "reset":
 			s.logf("info", "reset requested")
-			s.gb.RequestReset()
+			s.session.Reset()
 		case "pause":
-			s.gb.SetPaused(true)
+			s.session.SetPaused(true)
 			s.logf("info", "paused")
 		case "resume":
-			s.gb.SetPaused(false)
+			s.session.SetPaused(false)
 			s.logf("info", "resumed")
 		}
 
 	case *ConfigMsg:
-		s.auto.Store(m.Auto)
-		if m.Agent != "" && s.agent != nil {
-			s.agent.SetMode(agent.Mode(m.Agent))
+		s.session.SetAuto(m.Auto)
+		if m.Agent != "" {
+			s.session.SetMode(agent.Mode(m.Agent))
 		}
 		if m.Palette != "" {
-			if idx, err := paletteIndex(m.Palette); err == nil {
-				gb.SetDMGPalette(idx)
-				s.logf("info", "palette -> %s", m.Palette)
-			} else {
+			if err := s.session.SetPalette(m.Palette); err != nil {
 				s.logf("warn", "%v", err)
+			} else {
+				s.logf("info", "palette -> %s", m.Palette)
 			}
 		}
-		if !m.Auto {
-			// Hand control back to the keyboard: release agent-held buttons.
-			s.input.Clear()
-			if s.agent != nil {
-				s.agent.ReleaseAll()
-			}
-		}
-		mode := "manual"
-		if s.agent != nil {
-			mode = string(s.agent.Mode())
-		}
-		s.logf("info", "config: auto=%v mode=%s", m.Auto, mode)
+		s.logf("info", "config: auto=%v mode=%s", m.Auto, s.session.Mode())
 	}
 }
 
@@ -276,19 +165,10 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", s.handleWS)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		mode, stats := "manual", map[string]any{}
-		if s.agent != nil {
-			mode = string(s.agent.Mode())
-			stats = s.agent.Status()
-		}
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"status": "ok",
-			"cart":   s.gb.GetLoadedCart().GetName(),
-			"frames": s.gb.FrameNumber(),
-			"auto":   s.auto.Load(),
-			"agent":  mode,
-			"stats":  stats,
-		})
+		out := s.session.Status()
+		out["status"] = "ok"
+		out["agent"] = string(s.session.Mode())
+		_ = json.NewEncoder(w).Encode(out)
 	})
 	mux.Handle("/", http.FileServer(http.Dir(s.cfg.WebUI)))
 	return logMiddleware(mux)
@@ -328,23 +208,4 @@ func mustJSON(v any) []byte {
 		panic(err)
 	}
 	return buf
-}
-
-// encodePNG converts an emulator frame buffer into a PNG-encoded image.
-func encodePNG(frame *[gb.ScreenWidth][gb.ScreenHeight][3]uint8) []byte {
-	img := image.NewRGBA(image.Rect(0, 0, gb.ScreenWidth, gb.ScreenHeight))
-	for y := 0; y < gb.ScreenHeight; y++ {
-		for x := 0; x < gb.ScreenWidth; x++ {
-			i := img.PixOffset(x, y)
-			img.Pix[i+0] = frame[x][y][0]
-			img.Pix[i+1] = frame[x][y][1]
-			img.Pix[i+2] = frame[x][y][2]
-			img.Pix[i+3] = 0xFF
-		}
-	}
-	var buf bytes.Buffer
-	if err := png.Encode(&buf, img); err != nil {
-		return nil
-	}
-	return buf.Bytes()
 }

@@ -11,8 +11,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-
-	"agigame/emulator/core/gb"
 )
 
 // makeSmokeROM builds a minimal valid DMG ROM (NOP loop) in memory.
@@ -106,16 +104,4 @@ func TestServerEndToEnd(t *testing.T) {
 // newTestHTTPServer wraps the handler in an httptest server.
 func newTestHTTPServer(srv *Server) *httptest.Server {
 	return httptest.NewServer(srv.Handler())
-}
-
-func TestInputStateDiff(t *testing.T) {
-	in := NewInputState()
-	in.Press(gb.ButtonA)
-	if btns := in.ReadButtons(); len(btns.Pressed) != 1 || btns.Pressed[0] != gb.ButtonA {
-		t.Errorf("expected A pressed once, got %+v", btns)
-	}
-	in.Set(gb.ButtonA, false)
-	if btns := in.ReadButtons(); len(btns.Pressed) != 0 || len(btns.Released) != 1 {
-		t.Errorf("expected A released once, got %+v", btns)
-	}
 }

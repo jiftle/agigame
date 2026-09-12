@@ -95,37 +95,3 @@ func decodeMessage(data []byte) (any, error) {
 		return nil, fmt.Errorf("unknown message type %q", header.Type)
 	}
 }
-
-// buttonNames maps the wire-format button names to gb buttons.
-var buttonNames = map[string]gb.Button{
-	"A":      gb.ButtonA,
-	"B":      gb.ButtonB,
-	"Start":  gb.ButtonStart,
-	"Select": gb.ButtonSelect,
-	"Up":     gb.ButtonUp,
-	"Down":   gb.ButtonDown,
-	"Left":   gb.ButtonLeft,
-	"Right":  gb.ButtonRight,
-}
-
-// parseButton converts a wire button name into a gb button.
-func parseButton(name string) (gb.Button, error) {
-	if b, ok := buttonNames[name]; ok {
-		return b, nil
-	}
-	return 0, fmt.Errorf("unknown button %q", name)
-}
-
-// paletteIndex maps a palette name to its gb palette index.
-func paletteIndex(name string) (byte, error) {
-	switch name {
-	case "greyscale", "gray":
-		return gb.PaletteGreyscale, nil
-	case "original":
-		return gb.PaletteOriginal, nil
-	case "bgb":
-		return gb.PaletteBGB, nil
-	default:
-		return 0, fmt.Errorf("unknown palette %q (want greyscale|original|bgb)", name)
-	}
-}

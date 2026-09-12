@@ -1,14 +1,49 @@
-package server
+// Package engine is the transport-agnostic emulator session layer shared by
+// the standalone Web service and the console. It owns the GameBoy, the input
+// aggregation, the decision agent and the encoded frame pipeline; hosts
+// (net/http+gorilla, GoFrame, ...) only wire their own transport on top.
+package engine
 
 import (
+	"fmt"
 	"sync"
 
 	"agigame/emulator/core/gb"
 )
 
+// ButtonNames maps a canonical button name to the gb.Button it controls.
+var ButtonNames = map[string]gb.Button{
+	"A":      gb.ButtonA,
+	"B":      gb.ButtonB,
+	"Start":  gb.ButtonStart,
+	"Select": gb.ButtonSelect,
+	"Up":     gb.ButtonUp,
+	"Down":   gb.ButtonDown,
+	"Left":   gb.ButtonLeft,
+	"Right":  gb.ButtonRight,
+}
+
+// ParseButton converts a wire button name into a gb button.
+func ParseButton(name string) (gb.Button, error) {
+	if b, ok := ButtonNames[name]; ok {
+		return b, nil
+	}
+	return 0, fmt.Errorf("unknown button %q", name)
+}
+
+// ButtonName returns the canonical name of a gb button.
+func ButtonName(b gb.Button) string {
+	for name, btn := range ButtonNames {
+		if btn == b {
+			return name
+		}
+	}
+	return ""
+}
+
 // InputState aggregates button state from any number of producers (manual
-// websocket clients, and from P2 onwards the agent layer) and presents the
-// diff to the emulator once per frame.
+// clients and the agent layer) and presents the diff to the emulator once per
+// frame. It is safe for concurrent use.
 type InputState struct {
 	mu   sync.Mutex
 	held map[gb.Button]bool // currently held buttons
@@ -85,7 +120,7 @@ func (in *InputState) Held() []string {
 	in.mu.Lock()
 	defer in.mu.Unlock()
 	var out []string
-	for name, b := range buttonNames {
+	for name, b := range ButtonNames {
 		if in.held[b] {
 			out = append(out, name)
 		}
