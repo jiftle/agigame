@@ -61,6 +61,8 @@ type Session struct {
 	frameSkip     uint64
 	stateInterval uint64
 
+	audioBuf []byte // PCM accumulated until a ~50ms chunk is ready
+
 	frames chan framePush
 
 	mu      sync.RWMutex
@@ -215,9 +217,17 @@ func (s *Session) step() {
 	s.core.Step()
 	tick := s.core.FrameCount()
 
-	// Always drain PCM to release the APU ring's backpressure.
+	// Drain PCM every frame to release the APU ring's backpressure, but only
+	// emit a message once ~50ms has accumulated: fewer WS messages means less
+	// main-thread work on the client.
 	if pcm := s.core.DrainPCM(); len(pcm) > 0 {
-		s.emitAudio(Audio{PCM: pcm, SampleRate: s.core.SampleRate()})
+		s.audioBuf = append(s.audioBuf, pcm...)
+		rate := s.core.SampleRate()
+		chunk := rate / 20 * 4 // 50ms of stereo s16le
+		if len(s.audioBuf) >= chunk {
+			s.emitAudio(Audio{PCM: s.audioBuf, SampleRate: rate})
+			s.audioBuf = nil
+		}
 	}
 
 	if s.frameSkip == 0 || tick%s.frameSkip == 0 {
@@ -260,23 +270,19 @@ func (s *Session) queueFrame(tick uint64) {
 	}
 }
 
-// runEncoder PNG-encodes queued frames and invokes the frame callback.
+// runEncoder forwards queued frames to the frame callback. No encoding is
+// done: frames are raw RGBA and hosts ship them as binary messages.
 func (s *Session) runEncoder(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case push := <-s.frames:
-			png := encodeRGBA(push.pixels, push.width, push.height)
-			if png == nil {
-				continue
-			}
 			s.mu.RLock()
 			cb := s.onFrame
 			s.mu.RUnlock()
 			if cb != nil {
 				cb(Frame{
-					PNG:    png,
 					Tick:   push.tick,
 					RGBA:   push.pixels,
 					Width:  push.width,

@@ -89,19 +89,13 @@ func (s *Server) onAudio(a engine.Audio) {
 	})
 }
 
-// onFrame runs on the session encoder goroutine and broadcasts each frame.
-// GBA frames ship as raw RGBA binary (no base64/PNG decode on the client);
-// GB frames keep the base64 PNG JSON path.
+// onFrame runs on the session goroutine and broadcasts each frame as raw RGBA
+// binary (no base64/PNG decode on the client).
 func (s *Server) onFrame(f engine.Frame) {
-	if len(f.RGBA) > 0 && f.Width > 0 && f.Height > 0 {
-		s.hub.BroadcastBinary(encodeBinaryFrame(f))
+	if len(f.RGBA) == 0 || f.Width <= 0 || f.Height <= 0 {
 		return
 	}
-	s.hub.BroadcastJSON(FrameMsg{
-		Type: "frame",
-		Img:  base64.StdEncoding.EncodeToString(f.PNG),
-		Tick: f.Tick,
-	})
+	s.hub.BroadcastBinary(encodeBinaryFrame(f))
 }
 
 // binaryMagic 标识二进制帧：magic(4)|width(2 LE)|height(2 LE)|tick(8 LE)|RGBA.

@@ -330,17 +330,11 @@ func (s *session) onFrame(f engine.Frame) {
 	if !s.hasSubs() {
 		return
 	}
-	// 有原始 RGBA（GBA）时发二进制帧：帧头 + 像素，前端直接 putImageData，
+	// 原始 RGBA 二进制帧：帧头 + 像素，前端直接 putImageData，
 	// 免去 base64/PNG 编解码，消除前端解码堆积导致的卡顿。
 	if len(f.RGBA) > 0 && f.Width > 0 && f.Height > 0 {
 		s.broadcast(encodeBinaryFrame(f))
-		return
 	}
-	s.broadcastJSON(frameMsg{
-		Type: "frame",
-		Img:  base64.StdEncoding.EncodeToString(f.PNG),
-		Tick: f.Tick,
-	})
 }
 
 // binaryMagic 标识二进制帧消息，帧头为：

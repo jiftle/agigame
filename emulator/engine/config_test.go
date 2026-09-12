@@ -114,7 +114,7 @@ func TestSessionLifecycle(t *testing.T) {
 
 	select {
 	case f := <-frames:
-		if len(f.PNG) == 0 {
+		if len(f.RGBA) == 0 || f.Width <= 0 || f.Height <= 0 {
 			t.Fatalf("empty frame")
 		}
 	case <-time.After(3 * time.Second):

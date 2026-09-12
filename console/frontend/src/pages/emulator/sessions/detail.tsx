@@ -47,6 +47,7 @@ export default function EmulatorSessionDetailPage() {
   // 用 rAF 合并待画帧：只保留最新一帧，避免绘制堆积造成卡顿。
   const pendingFrame = useRef<FrameData | null>(null);
   const rafId = useRef<number | null>(null);
+  const imageDataRef = useRef<ImageData | null>(null);
 
   const flushFrame = () => {
     rafId.current = null;
@@ -57,16 +58,21 @@ export default function EmulatorSessionDetailPage() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // 原始 RGBA：直接 putImageData（同步、无解码），是最顺的路径。
+    // 原始 RGBA：复用 ImageData 缓冲，直接 putImageData（同步、无解码）。
     if (frame.rgba && frame.width && frame.height) {
       if (canvas.width !== frame.width) canvas.width = frame.width;
       if (canvas.height !== frame.height) canvas.height = frame.height;
-      const imgData = new ImageData(frame.rgba, frame.width, frame.height);
+      let imgData = imageDataRef.current;
+      if (!imgData || imgData.width !== frame.width || imgData.height !== frame.height) {
+        imgData = new ImageData(frame.width, frame.height);
+        imageDataRef.current = imgData;
+      }
+      imgData.data.set(frame.rgba);
       ctx.putImageData(imgData, 0, 0);
       return;
     }
 
-    // PNG 回退（GB 等无原始缓冲的会话）。
+    // PNG 回退（理论上不再使用）。
     if (frame.dataUrl) {
       const img = new Image();
       img.onload = () => {

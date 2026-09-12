@@ -1,12 +1,7 @@
 package emu
 
 // WebSocket 消息协议（与控制台前端约定，形状与 agigame/web 一致）。
-
-type frameMsg struct {
-	Type string `json:"type"`
-	Img  string `json:"img"` // base64 PNG
-	Tick uint64 `json:"tick"`
-}
+// 帧使用二进制消息（见 manager.encodeBinaryFrame），其余为 JSON 文本。
 
 type stateMsg struct {
 	Type  string         `json:"type"`

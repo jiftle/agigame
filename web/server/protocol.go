@@ -11,13 +11,6 @@ import (
 
 // Server → Client -------------------------------------------------------------
 
-// FrameMsg carries a rendered frame as a base64-encoded PNG image.
-type FrameMsg struct {
-	Type string `json:"type"`
-	Img  string `json:"img"` // base64 PNG
-	Tick uint64 `json:"tick"`
-}
-
 // StateMsg carries a snapshot of the emulator state. In auto mode the Agent
 // field carries the agent's live extract/reward summary.
 type StateMsg struct {

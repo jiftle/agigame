@@ -130,6 +130,7 @@ function send(obj) {
 
 let pendingFrame = null;
 let frameRaf = null;
+let frameImageData = null;
 
 const BINARY_MAGIC = [0x41, 0x47, 0x46, 0x4d]; // 'AGFM'
 
@@ -168,8 +169,11 @@ function flushFrame() {
   if (frame.rgba) {
     if (canvas.width !== frame.width) canvas.width = frame.width;
     if (canvas.height !== frame.height) canvas.height = frame.height;
-    const imgData = new ImageData(frame.rgba, frame.width, frame.height);
-    ctx.putImageData(imgData, 0, 0);
+    if (!frameImageData || frameImageData.width !== frame.width || frameImageData.height !== frame.height) {
+      frameImageData = new ImageData(frame.width, frame.height);
+    }
+    frameImageData.data.set(frame.rgba);
+    ctx.putImageData(frameImageData, 0, 0);
   } else if (frame.imgBase64) {
     const img = new Image();
     img.onload = () => {
