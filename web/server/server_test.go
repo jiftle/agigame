@@ -68,9 +68,17 @@ func TestServerEndToEnd(t *testing.T) {
 	var sawHello, sawFrame, sawState bool
 	for time.Now().Before(deadline) {
 		_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
-		_, data, err := conn.ReadMessage()
+		mt, data, err := conn.ReadMessage()
 		if err != nil {
 			break
+		}
+		// Frames arrive as binary messages (raw RGBA).
+		if mt == websocket.BinaryMessage {
+			sawFrame = true
+			if sawHello && sawFrame && sawState {
+				break
+			}
+			continue
 		}
 		var msg struct {
 			Type string `json:"type"`

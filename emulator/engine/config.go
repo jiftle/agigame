@@ -46,6 +46,9 @@ func (c *Config) normalize() {
 	if c.Game == "" {
 		c.Game = DefaultGame
 	}
+	if c.Palette == "" {
+		c.Palette = "greyscale"
+	}
 	if c.FrameSkip <= 0 {
 		c.FrameSkip = DefaultFrameSkip
 	}

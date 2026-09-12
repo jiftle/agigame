@@ -86,14 +86,16 @@ Client → Server：
 ## 目录结构
 
 ```
-emulator/core/gb     GameBoy 核心（GoBoy 源码改造：回调注入 + 运行循环 + 快照 + 帧前钩子）
-emulator/core/cart   MBC1/2/3/5、ROM、RAM+电池存档
-emulator/core/apu    无头 APU（保留寄存器语义，不产生音频）
+emulator/core/gb     共享类型（Button/State/调色板常量）；GoBoy 模拟器实现已不再用于运行
+emulator/core/cart   MBC1/2/3/5、ROM、RAM+电池存档（历史保留）
+emulator/core/apu    历史保留（当前 GB 音频由 guac 的 APU 提供）
+emulator/gb          guac(emu/gb) 适配层：DMG/GBC 无头运行 + 音频 + 内存读取
+emulator/gba         guac(emu/gba) 适配层：GBA 无头运行 + 音频 + 内存读取
 emulator/agent       决策层：模式切换 + 规则同步决策 + LLM 异步循环 + Reward/统计
 emulator/agent/games 游戏插件：GamePlugin 接口 + SML 实现 + 注册表(Register/Get)
-emulator/engine      传输无关会话层：生命周期 + 输入聚合 + 帧编码 + Agent 编排
+emulator/engine      传输无关会话层：生命周期 + 输入 + 帧/音频/状态回调 + Agent 编排
 web/server           engine 的 HTTP/WS 适配器（Hub + 协议 + 静态文件）
-web/webui            canvas 前端
+web/webui            canvas 前端（二进制 RGBA 帧）
 web/cmd/server       入口：装配各层、启动 loop
 web/config.yaml      Web 模拟器配置
 console/backend      控制台后端（GoFrame v2，独立 module，import emulator/engine）
@@ -112,21 +114,19 @@ make dev-console         # 仅启动控制台（后端 :8000 / 前端 :8001）�
 
 控制台 ROM 目录由 `console/backend/manifest/config/config.yaml` 的 `emulator.romDir` 配置（默认 `../../roms`）。启动会话时「选择游戏」会列出该目录下的 `.gb/.gbc/.gba`（读取 ROM 标题），并自动匹配平台。
 
-## GBA 支持
+## GB / GBA 支持
 
-除 DMG/CGB（GoBoy 核心）外，已支持 **Game Boy Advance**：
+**DMG / GBC / GBA 统一由 [`aabalke/guac`](https://github.com/aabalke/guac) 核心驱动**（纯 Go，BSD-3-Clause），适配层在 `emulator/gb/` 与 `emulator/gba/`，均**无头运行**（无需窗口/BIOS/音频设备）：
 
-- 核心：[`aabalke/guac`](https://github.com/aabalke/guac) 的 `emu/gba`（纯 Go，BSD-3-Clause），适配层在 `emulator/gba/`，**无头运行**（无需窗口/BIOS/音频设备）。
-- 启动：控制台「启动会话」里平台选 **Game Boy Advance**，ROM 填 `.gba` 文件名；Web 版则把 `web/config.yaml` 的 `emulator.console` 设为 `gba` 并把 `rom` 指向 `.gba`。
-- 按键：A/B/Start/Select/方向键 + **Q=L、W=R**。
-- 首期范围为「能玩」（画面/输入/控制台/WS）；**Agent（规则/LLM）暂只支持 GB**，GBA 会话忽略 auto/mode。
+- **GB/GBC**：`emulator/gb`（guac `emu/gb`）。启动时平台选 **Game Boy / GBC**，ROM 用 `.gb/.gbc`。
+- **GBA**：`emulator/gba`（guac `emu/gba`）。启动时平台选 **Game Boy Advance**，ROM 用 `.gba`；按键额外 **Q=L、W=R**。
+- **Agent（规则/LLM）目前仅支持 GB**（GBA 会忽略 auto/mode），通过 guac 的内存读取接口提取 SML 状态。
 
-> 注：guac 会引入 ebiten 等依赖（已在根 module）。GBA 及其 ROM 仅支持自有合法 dump。
+> 注：guac 会引入 ebiten 等依赖（已在根 module）。ROM 仅支持自有合法 dump。
 
 ## 声音
 
-- **GBA：已支持**。后端从 guac 的 APU 捕获立体声 s16le PCM（32768Hz），随 WS 以 `audio` 消息推送，浏览器用 Web Audio API 排队播放；控制台会话详情与 WebUI 均有「声音」开关。
-- **GB：暂无声**。`emulator/core/apu` 是无头实现（不合成音频），后续可移植原 GoBoy APU 合成并复用同一音频通道。
+- **GB 与 GBA 均已支持**。后端从 guac 的 APU 捕获立体声 s16le PCM（32768Hz），随 WS 以 `audio` 消息推送，浏览器用 Web Audio API 排队播放；控制台会话详情与 WebUI 均有「声音」开关。
 - 浏览器自动播放策略要求先有一次用户交互（点击/按键）后才会出声。
 
 ## 一键命令

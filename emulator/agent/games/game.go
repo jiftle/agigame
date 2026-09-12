@@ -13,13 +13,11 @@ package games
 import "agigame/emulator/core/gb"
 
 // GameReader gives a plugin everything it needs to read the current game
-// state. It is implemented by *gb.Gameboy and only read on the emulator
-// goroutine (synchronously), so no locking is required.
+// state. It is only read on the emulator goroutine (synchronously), so no
+// locking is required.
 type GameReader interface {
 	// ReadMemory reads one byte from the emulated address space.
 	ReadMemory(address uint16) byte
-	// Snapshot returns the emulator's general state snapshot.
-	Snapshot() gb.State
 }
 
 // Buttons is the set of GameBoy buttons a decision wants to hold on the next

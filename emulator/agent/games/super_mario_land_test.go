@@ -2,15 +2,12 @@ package games
 
 import (
 	"testing"
-
-	"agigame/emulator/core/gb"
 )
 
 // fakeMem is a scripted GameReader for pure-logic tests.
 type fakeMem map[uint16]byte
 
 func (m fakeMem) ReadMemory(addr uint16) byte { return m[addr] }
-func (m fakeMem) Snapshot() gb.State          { return gb.State{} }
 
 func set(f fakeMem, addr uint16, v int) {
 	if v < 0 {

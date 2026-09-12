@@ -21,7 +21,6 @@ func (s *fakeState) Progress() int { return s.cam }
 type fakeReader struct{}
 
 func (fakeReader) ReadMemory(uint16) byte { return 0 }
-func (fakeReader) Snapshot() gb.State     { return gb.State{} }
 
 type fakePlugin struct {
 	cam int
