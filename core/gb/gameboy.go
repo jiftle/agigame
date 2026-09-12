@@ -49,12 +49,12 @@ type Gameboy struct {
 	paused atomic.Bool
 
 	// Callbacks and input provider injected by the host application.
-	frameCallback   FrameCallback
-	stateCallback   StateCallback
-	inputProvider   InputProvider
+	frameCallback    FrameCallback
+	stateCallback    StateCallback
+	inputProvider    InputProvider
 	preFrameCallback func()
-	frameCount      atomic.Uint64
-	stateInterval   uint64
+	frameCount       atomic.Uint64
+	stateInterval    uint64
 
 	resetRequested atomic.Bool
 

@@ -22,17 +22,17 @@ func set(f fakeMem, addr uint16, v int) {
 
 func baseState() fakeMem {
 	f := fakeMem{
-		addrCameraX:   10,
-		addrMarioX:    50,
-		addrMarioY:    144,
+		addrCameraX:     10,
+		addrMarioX:      50,
+		addrMarioY:      144,
 		addrMarioGround: 1,
 		addrMarioFacing: 0x00, // right
-		addrLives:      0x05,
-		addrCoins:      0x10,
-		addrTimeSec9:   0x03,
-		addrTimeSec99:  0x25,
-		addrStatus:     0x00, // small
-		addrDemoStatus: 0x00, // in-game
+		addrLives:       0x05,
+		addrCoins:       0x10,
+		addrTimeSec9:    0x03,
+		addrTimeSec99:   0x25,
+		addrStatus:      0x00, // small
+		addrDemoStatus:  0x00, // in-game
 	}
 	return f
 }

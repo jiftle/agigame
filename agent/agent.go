@@ -51,9 +51,9 @@ type Config struct {
 
 // Agent owns the per-frame decision pipeline.
 type Agent struct {
-	cfg     Config
-	plugin  games.GamePlugin
-	sink    InputSink
+	cfg    Config
+	plugin games.GamePlugin
+	sink   InputSink
 
 	mode atomic.Value // Mode
 

@@ -12,7 +12,7 @@ import (
 // --- fakes ----------------------------------------------------------------
 
 type fakeState struct {
-	cam   int
+	cam    int
 	ground bool
 }
 
@@ -20,21 +20,21 @@ func (s *fakeState) Progress() int { return s.cam }
 
 type fakeReader struct{}
 
-func (fakeReader) ReadMemory(uint16) byte  { return 0 }
-func (fakeReader) Snapshot() gb.State      { return gb.State{} }
+func (fakeReader) ReadMemory(uint16) byte { return 0 }
+func (fakeReader) Snapshot() gb.State     { return gb.State{} }
 
 type fakePlugin struct {
 	cam int
 }
 
-func (f *fakePlugin) ID() string                    { return "fake" }
-func (f *fakePlugin) Name() string                  { return "Fake" }
+func (f *fakePlugin) ID() string   { return "fake" }
+func (f *fakePlugin) Name() string { return "Fake" }
 func (f *fakePlugin) ExtractState(games.GameReader) (any, error) {
 	return &fakeState{cam: f.cam, ground: true}, nil
 }
-func (f *fakePlugin) Decide(any) games.Buttons     { return games.Buttons{Right: true} }
+func (f *fakePlugin) Decide(any) games.Buttons         { return games.Buttons{Right: true} }
 func (f *fakePlugin) NeedsLLM(any, games.Buttons) bool { return false }
-func (f *fakePlugin) Prompt(any) string            { return "fake prompt" }
+func (f *fakePlugin) Prompt(any) string                { return "fake prompt" }
 func (f *fakePlugin) Reward(prev, cur any) games.RewardInfo {
 	b := prev.(*fakeState)
 	a := cur.(*fakeState)
@@ -43,8 +43,8 @@ func (f *fakePlugin) Reward(prev, cur any) games.RewardInfo {
 func (f *fakePlugin) ExtraState(any) map[string]any { return map[string]any{"cam": f.cam} }
 
 type fakeSink struct {
-	mu    sync.Mutex
-	held  map[gb.Button]bool
+	mu   sync.Mutex
+	held map[gb.Button]bool
 }
 
 func newFakeSink() *fakeSink { return &fakeSink{held: map[gb.Button]bool{}} }

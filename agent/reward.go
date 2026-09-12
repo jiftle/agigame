@@ -11,18 +11,18 @@ import (
 type Stats struct {
 	mu sync.Mutex
 
-	Frames         int
-	Progress       int
-	MaxProgress    int
-	RewardTotal    float64
-	Deaths         int
-	GameOver       bool
-	Victory        bool
-	LastDecision   string // last LLM rationale, for the UI
-	Decisions      int    // number of LLM decisions consumed
-	LastEvent      string
-	FrozenFrames   int // frames with no reward progress (>0 => stuck)
-	UpdatedFrozen  bool
+	Frames        int
+	Progress      int
+	MaxProgress   int
+	RewardTotal   float64
+	Deaths        int
+	GameOver      bool
+	Victory       bool
+	LastDecision  string // last LLM rationale, for the UI
+	Decisions     int    // number of LLM decisions consumed
+	LastEvent     string
+	FrozenFrames  int // frames with no reward progress (>0 => stuck)
+	UpdatedFrozen bool
 }
 
 // Update folds one RewardInfo transition into the stats.

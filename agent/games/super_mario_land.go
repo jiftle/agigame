@@ -17,26 +17,26 @@ import (
 // ---------------------------------------------------------------------------
 
 const (
-	addrMarioY        = 0xC201 // Mario screen Y position
-	addrMarioX        = 0xC202 // Mario screen X position
-	addrMarioAnim     = 0xC203 // Mario animation frame
-	addrMarioFacing   = 0xC205 // 0x00 right, 0x20 left
-	addrMarioJump     = 0xC207 // mario jump state
-	addrMarioJumpCtr  = 0xC208 // jump state counter
-	addrMarioGround   = 0xC20A // 0x00 air, 0x01 ground
-	addrMarioMoveDir  = 0xC20D // 01 turning, 10 right, 20 left
-	addrMarioXSpeed   = 0xC20E // mario X speed
+	addrMarioY       = 0xC201 // Mario screen Y position
+	addrMarioX       = 0xC202 // Mario screen X position
+	addrMarioAnim    = 0xC203 // Mario animation frame
+	addrMarioFacing  = 0xC205 // 0x00 right, 0x20 left
+	addrMarioJump    = 0xC207 // mario jump state
+	addrMarioJumpCtr = 0xC208 // jump state counter
+	addrMarioGround  = 0xC20A // 0x00 air, 0x01 ground
+	addrMarioMoveDir = 0xC20D // 01 turning, 10 right, 20 left
+	addrMarioXSpeed  = 0xC20E // mario X speed
 
 	addrTimeSplit = 0xDA00 // time split-seconds (00-28)
 	addrTimeSec99 = 0xDA01 // time seconds low BCD digit
 	addrTimeSec9  = 0xDA02 // time seconds high BCD digit
 	addrLives     = 0xDA15 // lives (00-99, BCD)
 
-	addrStatus    = 0xFF99 // mario status (00 small, 02 super)
-	addrHardMode  = 0xFF9A // 00 normal, 01+ hard
-	addrCameraX   = 0xFFA4 // camera X position
+	addrStatus     = 0xFF99 // mario status (00 small, 02 super)
+	addrHardMode   = 0xFF9A // 00 normal, 01+ hard
+	addrCameraX    = 0xFFA4 // camera X position
 	addrDemoStatus = 0xFF9F // 00 in game, 28 demo mode
-	addrCoins     = 0xFFFA // coins (00-99)
+	addrCoins      = 0xFFFA // coins (00-99)
 )
 
 // ---------------------------------------------------------------------------
@@ -54,20 +54,20 @@ type EnemyInfo struct {
 
 // MarioState is the extracted, per-frame game state.
 type MarioState struct {
-	CameraX  int
-	MarioX   int
-	MarioY   int
-	OnGround bool
+	CameraX   int
+	MarioX    int
+	MarioY    int
+	OnGround  bool
 	JumpState int
-	Facing   string // "left" | "right"
-	Lives    int
-	Coins    int
-	Time     int
-	State    string // "small" | "super"
-	HardMode bool
-	Demo     bool // attract mode / title screen
-	Enemy    *EnemyInfo
-	PitAhead bool // NOTE: surface scan not implemented yet (TODO)
+	Facing    string // "left" | "right"
+	Lives     int
+	Coins     int
+	Time      int
+	State     string // "small" | "super"
+	HardMode  bool
+	Demo      bool // attract mode / title screen
+	Enemy     *EnemyInfo
+	PitAhead  bool // NOTE: surface scan not implemented yet (TODO)
 }
 
 // Progress returns the run's absolute progress metric (camera X), used by the
@@ -91,16 +91,16 @@ func (p *SMLPlugin) Name() string { return "Super Mario Land" }
 // ExtractState implements games.GamePlugin.
 func (p *SMLPlugin) ExtractState(r GameReader) (any, error) {
 	s := &MarioState{
-		CameraX:  int(r.ReadMemory(addrCameraX)),
-		MarioX:   int(r.ReadMemory(addrMarioX)),
-		MarioY:   int(r.ReadMemory(addrMarioY)),
-		OnGround: r.ReadMemory(addrMarioGround) != 0,
+		CameraX:   int(r.ReadMemory(addrCameraX)),
+		MarioX:    int(r.ReadMemory(addrMarioX)),
+		MarioY:    int(r.ReadMemory(addrMarioY)),
+		OnGround:  r.ReadMemory(addrMarioGround) != 0,
 		JumpState: int(r.ReadMemory(addrMarioJump)),
-		Lives:    bcd(r.ReadMemory(addrLives)),
-		Coins:    bcd(r.ReadMemory(addrCoins)),
-		Time:     bcd(r.ReadMemory(addrTimeSec9))*100 + bcd(r.ReadMemory(addrTimeSec99)),
-		HardMode: r.ReadMemory(addrHardMode) != 0,
-		Demo:     r.ReadMemory(addrDemoStatus) != 0,
+		Lives:     bcd(r.ReadMemory(addrLives)),
+		Coins:     bcd(r.ReadMemory(addrCoins)),
+		Time:      bcd(r.ReadMemory(addrTimeSec9))*100 + bcd(r.ReadMemory(addrTimeSec99)),
+		HardMode:  r.ReadMemory(addrHardMode) != 0,
+		Demo:      r.ReadMemory(addrDemoStatus) != 0,
 	}
 	if f := r.ReadMemory(addrMarioFacing); f == 0x20 {
 		s.Facing = "left"
@@ -248,15 +248,15 @@ func (p *SMLPlugin) ExtraState(cur any) map[string]any {
 		return nil
 	}
 	m := map[string]any{
-		"camera":  s.CameraX,
-		"lives":   s.Lives,
-		"coins":   s.Coins,
-		"state":   s.State,
-		"facing":  s.Facing,
-		"ground":  s.OnGround,
-		"time":    s.Time,
-		"hard":    s.HardMode,
-		"demo":    s.Demo,
+		"camera":   s.CameraX,
+		"lives":    s.Lives,
+		"coins":    s.Coins,
+		"state":    s.State,
+		"facing":   s.Facing,
+		"ground":   s.OnGround,
+		"time":     s.Time,
+		"hard":     s.HardMode,
+		"demo":     s.Demo,
 		"pitAhead": s.PitAhead,
 	}
 	if s.Enemy != nil {

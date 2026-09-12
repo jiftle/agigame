@@ -10,7 +10,7 @@ type SafetyNet struct {
 	// the net forces a rescue (frames, ~16ms each).
 	ThresholdFrames int
 
-	stuckFrames int
+	stuckFrames  int
 	lastProgress int
 	fired        bool
 	pulse        int
