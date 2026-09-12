@@ -46,6 +46,11 @@ func GetPaletteColour(index byte) (uint8, uint8, uint8) {
 	return col[0], col[1], col[2]
 }
 
+// SetDMGPalette switches the active DMG palette by index (bounds-checked).
+func SetDMGPalette(index byte) {
+	CurrentPalette = index % byte(len(Palettes))
+}
+
 // NewPalette makes a new CGB colour palette.
 func NewPalette() *cgbPalette {
 	pal := make([]byte, 0x40)

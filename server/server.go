@@ -30,11 +30,11 @@ type framePush struct {
 type Server struct {
 	cfg *Config
 
-	gb       *gb.Gameboy
-	hub      *Hub
-	input    *InputState
-	agent    *agent.Agent
-	frames   chan framePush
+	gb        *gb.Gameboy
+	hub       *Hub
+	input     *InputState
+	agent     *agent.Agent
+	frames    chan framePush
 	frameSkip uint64
 
 	auto atomic.Bool // auto/manual switch
@@ -63,11 +63,11 @@ func New(cfg *Config) (*Server, error) {
 	}
 
 	s := &Server{
-		cfg:      cfg,
-		gb:       gameboy,
-		hub:      NewHub(),
-		input:    NewInputState(),
-		frames:   make(chan framePush, 1),
+		cfg:       cfg,
+		gb:        gameboy,
+		hub:       NewHub(),
+		input:     NewInputState(),
+		frames:    make(chan framePush, 1),
 		frameSkip: uint64(cfg.Emulator.FrameSkip),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool { return true },
@@ -75,6 +75,12 @@ func New(cfg *Config) (*Server, error) {
 	}
 	if s.frameSkip == 0 {
 		s.frameSkip = 1
+	}
+	if idx, err := paletteIndex(cfg.Emulator.Palette); err == nil {
+		gb.SetDMGPalette(idx)
+	} else {
+		log.Printf("warn: %v (falling back to greyscale)", err)
+		gb.SetDMGPalette(gb.PaletteGreyscale)
 	}
 
 	// P3 skeleton: always the stub provider; swap in a real LLM via
@@ -241,6 +247,14 @@ func (s *Server) handleClientMsg(data []byte) {
 		s.auto.Store(m.Auto)
 		if m.Agent != "" && s.agent != nil {
 			s.agent.SetMode(agent.Mode(m.Agent))
+		}
+		if m.Palette != "" {
+			if idx, err := paletteIndex(m.Palette); err == nil {
+				gb.SetDMGPalette(idx)
+				s.logf("info", "palette -> %s", m.Palette)
+			} else {
+				s.logf("warn", "%v", err)
+			}
 		}
 		if !m.Auto {
 			// Hand control back to the keyboard: release agent-held buttons.

@@ -56,11 +56,12 @@ type ControlMsg struct {
 	Action string `json:"action"` // reset | pause | resume
 }
 
-// ConfigMsg selects the control mode. Auto/agent are honoured from P2 onwards.
+// ConfigMsg selects the control mode and DMG palette.
 type ConfigMsg struct {
-	Type  string `json:"type"`
-	Auto  bool   `json:"auto"`  // true = agent controls, false = manual
-	Agent string `json:"agent"` // manual | rules | llm | hybrid
+	Type    string `json:"type"`
+	Auto    bool   `json:"auto"`    // true = agent controls, false = manual
+	Agent   string `json:"agent"`   // manual | rules | llm | hybrid
+	Palette string `json:"palette"` // greyscale | original | bgb
 }
 
 // decodeMessage parses a raw client websocket message into a typed struct.
@@ -113,4 +114,18 @@ func parseButton(name string) (gb.Button, error) {
 		return b, nil
 	}
 	return 0, fmt.Errorf("unknown button %q", name)
+}
+
+// paletteIndex maps a palette name to its gb palette index.
+func paletteIndex(name string) (byte, error) {
+	switch name {
+	case "greyscale", "gray":
+		return gb.PaletteGreyscale, nil
+	case "original":
+		return gb.PaletteOriginal, nil
+	case "bgb":
+		return gb.PaletteBGB, nil
+	default:
+		return 0, fmt.Errorf("unknown palette %q (want greyscale|original|bgb)", name)
+	}
 }

@@ -14,6 +14,7 @@ const el = {
   selMode: document.getElementById("selMode"),
   btnReset: document.getElementById("btnReset"),
   btnPause: document.getElementById("btnPause"),
+  selPalette: document.getElementById("selPalette"),
   sFrame: document.getElementById("sFrame"),
   sPC: document.getElementById("sPC"),
   sSP: document.getElementById("sSP"),
@@ -254,6 +255,11 @@ el.btnAuto.addEventListener("click", () => {
     send({ type: "config", auto: false, agent: "manual" });
     log("info", "已切换 Manual，键盘接管");
   }
+});
+
+el.selPalette.addEventListener("change", () => {
+  send({ type: "config", palette: el.selPalette.value });
+  log("info", `调色板 -> ${el.selPalette.selectedOptions[0].textContent}`);
 });
 
 connect();
