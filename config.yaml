@@ -1,0 +1,17 @@
+rom: ./roms/super-mario-land.gb
+server:
+  host: 0.0.0.0
+  port: 8080
+emulator:
+  fps: 60
+  frame_skip: 4          # N 帧推送一次画面到前端（60/4 = 15fps）
+  save_path: ./saves/
+  cgb: false
+agent:
+  mode: hybrid           # rules | llm | hybrid | manual
+  llm_interval_ms: 500
+  model: gpt-4o-mini
+  api_key_env: OPENAI_API_KEY
+  rules_first: true
+game: sml                # 游戏插件 id（P2 起生效）
+webui: ./webui

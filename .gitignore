@@ -1,0 +1,9 @@
+# 运行时产物
+/server
+saves/*
+!saves/.gitkeep
+*.sav
+
+# 忽略源码树里的 ROM（用户自有 dump，不纳入版本库）
+roms/*
+!roms/.gitkeep

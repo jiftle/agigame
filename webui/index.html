@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GoBoy-LLM</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>GoBoy&nbsp;<span>-LLM</span></h1>
+    <div class="badges">
+      <span id="conn" class="badge off">未连接</span>
+      <span id="cart" class="badge">-</span>
+      <span id="fps" class="badge">0 fps</span>
+    </div>
+  </header>
+
+  <main>
+    <section id="screenWrap">
+      <canvas id="screen" width="160" height="144"></canvas>
+      <div id="overlay">
+        <p id="overlayMsg"></p>
+      </div>
+    </section>
+
+    <aside id="panels">
+      <section class="panel">
+        <h2>控制</h2>
+        <div class="row">
+          <button id="btnAuto" class="primary">Auto</button>
+          <button id="btnMode" disabled title="P2 起生效">规则/LLM</button>
+        </div>
+        <div class="row">
+          <button id="btnReset">Reset</button>
+          <button id="btnPause">Pause</button>
+        </div>
+        <p class="hint">
+          手动模式按键：<br />
+          ↑↓←→ 方向键 &nbsp;·&nbsp; Z = A &nbsp;·&nbsp; X = B<br />
+          Enter = Start &nbsp;·&nbsp; Backspace = Select
+        </p>
+      </section>
+
+      <section class="panel">
+        <h2>状态</h2>
+        <table id="stateTable">
+          <tr><td>帧</td><td id="sFrame">-</td></tr>
+          <tr><td>PC</td><td id="sPC">-</td></tr>
+          <tr><td>SP</td><td id="sSP">-</td></tr>
+          <tr><td>AF</td><td id="sAF">-</td></tr>
+          <tr><td>BC</td><td id="sBC">-</td></tr>
+          <tr><td>DE</td><td id="sDE">-</td></tr>
+          <tr><td>HL</td><td id="sHL">-</td></tr>
+          <tr><td>LY</td><td id="sLY">-</td></tr>
+          <tr><td>LCDC</td><td id="sLCDC">-</td></tr>
+          <tr><td>IF / IE</td><td id="sIFIE">-</td></tr>
+        </table>
+      </section>
+
+      <section class="panel log">
+        <h2>日志</h2>
+        <div id="log"></div>
+      </section>
+    </aside>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
